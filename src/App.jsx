@@ -3,15 +3,15 @@ import { useState, useEffect } from "react";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import Calendar from "./components/Calendar";
-import EventModal from "./components/EventModal";
 
 function App() {
   const [events, setEvents] = useState([]);
   const [editingEvent, setEditingEvent] = useState(null);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-  const [isDayModalOpen, setIsDayModalOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedHour, setSelectedHour] = useState(null);
+  const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
+
 
   const [categories, setCategories] = useState(() => {
     const saved = localStorage.getItem("categories");
@@ -85,18 +85,16 @@ function App() {
   return (
     <div className="h-screen flex flex-col">
       <Header />
-      <div className="flex flex-1">
+      <div className="flex flex-1 bg-gray-50 rounded-xl m-4 overflow-hidden shadow">
         <Sidebar
           categories={categories}
           setCategories={setCategories}
           onAddEventClick={() => {
             setEditingEvent(null);
-            setIsDayModalOpen(false);
             setIsEventModalOpen(true);
           }}
         />
-
-        <main className="flex-1 bg-white p-6 overflow-y-auto">
+        <main className="flex-1 p-6 relative">
           <Calendar
             categories={categories}
             events={events}
@@ -105,14 +103,14 @@ function App() {
             setEditingEvent={setEditingEvent}
             isEventModalOpen={isEventModalOpen}
             setIsEventModalOpen={setIsEventModalOpen}
-            isDayModalOpen={isDayModalOpen}
-            setIsDayModalOpen={setIsDayModalOpen}
             selectedDay={selectedDay}
             setSelectedDay={setSelectedDay}
             selectedHour={selectedHour}
             setSelectedHour={setSelectedHour}
             onSaveEvent={handleSaveEvent}
             onDeleteEvent={handleDeleteEvent}
+            modalPosition={modalPosition}
+            setModalPosition={setModalPosition}
           />
         </main>
       </div>

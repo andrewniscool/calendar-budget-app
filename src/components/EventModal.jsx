@@ -1,7 +1,17 @@
-import { Dialog, Transition } from "@headlessui/react";
-import { Fragment, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+// eslint-disable-next-line no-unused-vars
+import { motion, AnimatePresence } from "framer-motion";
 
-function EventModal({ isOpen, setIsOpen, onSave, editingEvent, onDelete, categories, selectedHour }) {
+function EventModal({
+  isOpen,
+  setIsOpen,
+  onSave,
+  onDelete,
+  editingEvent,
+  categories,
+  selectedHour,
+  modalPosition
+}) {
   const [title, setTitle] = useState("");
   const [budget, setBudget] = useState("");
   const [timeStart, setTimeStart] = useState("");
@@ -17,13 +27,18 @@ function EventModal({ isOpen, setIsOpen, onSave, editingEvent, onDelete, categor
         setTimeEnd(editingEvent.timeEnd || "");
         setCategory(editingEvent.category || "");
       } else {
-        setTitle("");
-        setBudget("");
         const now = new Date();
         const defaultStart = now.toTimeString().slice(0, 5);
         const defaultEnd = new Date(now.getTime() + 60 * 60 * 1000).toTimeString().slice(0, 5);
-        const start = selectedHour !== undefined ? selectedHour.toString().padStart(2, "0") + ":00" : defaultStart;
-        const end = selectedHour !== undefined ? ((selectedHour + 1) % 24).toString().padStart(2, "0") + ":00" : defaultEnd;
+        const start = selectedHour !== undefined
+          ? selectedHour.toString().padStart(2, "0") + ":00"
+          : defaultStart;
+        const end = selectedHour !== undefined
+          ? ((selectedHour + 1) % 24).toString().padStart(2, "0") + ":00"
+          : defaultEnd;
+
+        setTitle("");
+        setBudget("");
         setTimeStart(start);
         setTimeEnd(end);
         setCategory("");
@@ -45,46 +60,59 @@ function EventModal({ isOpen, setIsOpen, onSave, editingEvent, onDelete, categor
   }
 
   return (
-    <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-10" onClose={() => setIsOpen(false)}>
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-200"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-150"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-black/30" />
-        </Transition.Child>
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            className="fixed inset-0 z-40"
+            onClick={() => setIsOpen(false)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0 }}
+            exit={{ opacity: 0 }}
+          />
 
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
-            <Dialog.Title className="text-xl font-bold text-gray-800 mb-4">
-              {editingEvent ? "Edit Event" : "Add Event"}
-            </Dialog.Title>
+          {/* Modal */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.2 }}
+            className="absolute bg-white border shadow-md rounded-md p-4 z-50 w-72"
+            style={{
+              top: modalPosition?.top || 100,
+              left: modalPosition?.left || 100,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold">
+                {editingEvent ? "Edit Event" : "Add Event"}
+              </h2>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-gray-500 hover:text-gray-700 text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Title</label>
                 <input
                   type="text"
-                  placeholder="Event title"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
+                  className="w-full mt-1 border rounded px-2 py-1 text-sm"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Budget ($)</label>
+                <label className="block text-sm font-medium text-gray-700">Budget</label>
                 <input
                   type="number"
-                  placeholder="0.00"
-                  step="0.01"
-                  inputMode="decimal"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
+                  className="w-full mt-1 border rounded px-2 py-1 text-sm"
                   value={budget}
                   onChange={(e) => setBudget(e.target.value)}
                 />
@@ -95,18 +123,18 @@ function EventModal({ isOpen, setIsOpen, onSave, editingEvent, onDelete, categor
                   <label className="block text-sm font-medium text-gray-700">Start Time</label>
                   <input
                     type="time"
+                    className="w-full mt-1 border rounded px-2 py-1 text-sm"
                     value={timeStart}
                     onChange={(e) => setTimeStart(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">End Time</label>
                   <input
                     type="time"
+                    className="w-full mt-1 border rounded px-2 py-1 text-sm"
                     value={timeEnd}
                     onChange={(e) => setTimeEnd(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
                   />
                 </div>
               </div>
@@ -114,14 +142,14 @@ function EventModal({ isOpen, setIsOpen, onSave, editingEvent, onDelete, categor
               <div>
                 <label className="block text-sm font-medium text-gray-700">Category</label>
                 <select
+                  className="w-full mt-1 border rounded px-2 py-1 text-sm"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
                 >
                   <option value="">Select a category</option>
-                  {categories.map((c, i) => (
-                    <option key={i} value={c.name}>
-                      {c.name}
+                  {categories.map((cat, i) => (
+                    <option key={i} value={cat.name}>
+                      {cat.name}
                     </option>
                   ))}
                 </select>
@@ -130,15 +158,14 @@ function EventModal({ isOpen, setIsOpen, onSave, editingEvent, onDelete, categor
               <div className="flex justify-between items-center pt-2">
                 <button
                   type="submit"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
                 >
                   Save
                 </button>
-
                 {editingEvent && (
                   <button
                     type="button"
-                    className="text-red-600 border border-red-300 px-3 py-1.5 text-sm rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-300"
+                    className="text-red-600 text-sm hover:underline"
                     onClick={handleDelete}
                   >
                     Delete
@@ -146,10 +173,10 @@ function EventModal({ isOpen, setIsOpen, onSave, editingEvent, onDelete, categor
                 )}
               </div>
             </form>
-          </Dialog.Panel>
-        </div>
-      </Dialog>
-    </Transition>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
 

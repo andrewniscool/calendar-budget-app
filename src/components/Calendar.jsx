@@ -1,7 +1,8 @@
-// ✅ Calendar.jsx
-import { Fragment } from "react";
+import { Fragment, useEffect, useState, useRef, useLayoutEffect } from "react";
+import dayjs from "dayjs";
 import EventModal from "./EventModal";
-import DayModal from "./DayModal";
+
+
 
 function getStartOfWeek(date) {
   const start = new Date(date);
@@ -24,9 +25,9 @@ function formatHour(hour) {
 
 function getTextColor(bgColor) {
   const hex = bgColor.replace("#", "");
-  const r = parseInt(hex.substr(0, 2), 16);
-  const g = parseInt(hex.substr(2, 2), 16);
-  const b = parseInt(hex.substr(4, 2), 16);
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 2), 16);
+  const b = parseInt(hex.substring(4, 2), 16);
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return luminance > 0.6 ? "#000000" : "#FFFFFF";
 }
@@ -38,14 +39,13 @@ function Calendar({
   setEditingEvent,
   isEventModalOpen,
   setIsEventModalOpen,
-  isDayModalOpen,
-  setIsDayModalOpen,
-  selectedDay,
   setSelectedDay,
   selectedHour,
   setSelectedHour,
   onSaveEvent,
-  onDeleteEvent
+  onDeleteEvent,
+  modalPosition,
+  setModalPosition
 }) {
   const today = new Date();
   const startOfWeek = getStartOfWeek(today);
@@ -54,37 +54,68 @@ function Calendar({
     d.setDate(d.getDate() + i);
     return d;
   });
+  const redLineContainerRef = useRef(null);
+  const [calendarRect, setCalendarRect] = useState(null);
 
-  function handleDayClick(dayIndex, hour = null) {
+  const [currentTime, setCurrentTime] = useState(dayjs());
+  const [rowHeight, setRowHeight] = useState(56); 
+
+  useLayoutEffect(() => {
+    const row = document.querySelector(".h-14");
+    if (row) {
+      setRowHeight(row.offsetHeight);
+    }
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(dayjs()), 10000);
+
+    // Measure calendar grid layout for positioning the red line
+    if (redLineContainerRef.current) {
+      const rects = redLineContainerRef.current.querySelectorAll(".day-column");
+      const todayIndex = weekDates.findIndex((d) => dayjs(d).isSame(dayjs(), "day"));
+      if (rects[todayIndex]) {
+        const cell = rects[todayIndex].getBoundingClientRect();
+        const parent = redLineContainerRef.current.getBoundingClientRect();
+        setCalendarRect({
+          left: cell.left - parent.left,
+          width: cell.width,
+        });
+      }
+    }
+
+  return () => clearInterval(interval);
+}, [weekDates]);
+
+  const totalMinutes = currentTime.hour() * 60 + currentTime.minute();
+  const topPx = (totalMinutes / 60) * rowHeight;
+
+
+  function handleTimeCellClick(dayIndex, hour, event) {
     setSelectedDay(dayIndex);
     setSelectedHour(hour);
     setEditingEvent(null);
-    setIsDayModalOpen(true);
-  }
-
-  function handleAddClick(day) {
-    setSelectedDay(day);
-    setEditingEvent(null);
-    setIsDayModalOpen(false);
     setIsEventModalOpen(true);
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    setModalPosition({
+      top: rect.top + window.scrollY,
+      left: rect.left + window.scrollX - 300,
+    });
   }
 
   function handleEventClick(event) {
     setEditingEvent(event);
-    setIsDayModalOpen(false);
     setIsEventModalOpen(true);
   }
 
   return (
-    <div className="flex-1 overflow-hidden">
-      <div className="grid grid-cols-[80px_repeat(7,minmax(0,1fr))] h-full overflow-y-auto border-t border-l relative">
-        {/* Header */}
-        <div className="border-b bg-gray-50"></div>
+    <div className="relative flex-1 bg-white rounded-xl overflow-hidden shadow">
+      {/* Header */}
+      <div className="grid grid-cols-[80px_repeat(7,minmax(0,1fr))] bg-white sticky top-0 z-10 rounded-t-xl">
+        <div className="bg-white" />
         {weekDates.map((date, index) => (
-          <div
-            key={index}
-            className="border-b border-l p-2 text-center text-sm font-medium bg-gray-50"
-          >
+          <div key={index} className="p-2 text-center text-sm font-medium">
             {date.toLocaleDateString("default", {
               weekday: "short",
               month: "short",
@@ -92,70 +123,50 @@ function Calendar({
             })}
           </div>
         ))}
-
-        {/* Time + Grid */}
-        {Array.from({ length: 24 }, (_, hour) => (
-          <Fragment key={hour}>
-            <div className="border-t border-l px-2 py-1 text-xs text-gray-500 bg-gray-50 h-14">
-              {formatHour(hour)}
-            </div>
-            {weekDates.map((_, dayIndex) => (
-              <div
-                key={dayIndex + "-" + hour}
-                className="border-t border-l relative h-14 cursor-pointer hover:bg-blue-50"
-                onClick={() => handleDayClick(dayIndex, hour)}
-              >
-                {events
-                  .filter(
-                    (event) =>
-                      event.day === dayIndex &&
-                      getMinutes(event.timeStart) >= hour * 60 &&
-                      getMinutes(event.timeStart) < (hour + 1) * 60 &&
-                      (event.category === undefined ||
-                        categories.find((c) => c.name === event.category)?.visible !== false)
-                  )
-                  .map((event) => {
-                    const startMinutes = getMinutes(event.timeStart);
-                    const endMinutes = getMinutes(event.timeEnd);
-                    const top = ((startMinutes - hour * 60) / 60) * 100;
-                    const height = ((endMinutes - startMinutes) / 60) * 100;
-                    const bg = categories.find((c) => c.name === event.category)?.color || "#e0e0e0";
-
-                    return (
-                      <div
-                        key={event.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEventClick(event);
-                        }}
-                        className="absolute left-[2px] right-[2px] px-2 py-1 rounded text-xs font-medium shadow-sm cursor-pointer"
-                        style={{
-                          top: `${top}%`,
-                          height: `${height}%`,
-                          backgroundColor: bg,
-                          color: getTextColor(bg),
-                        }}
-                      >
-                        {event.title} {event.budget > 0 && `($${event.budget})`}
-                      </div>
-                    );
-                  })}
-              </div>
-            ))}
-          </Fragment>
-        ))}
       </div>
 
-      <DayModal
-        isOpen={isDayModalOpen}
-        setIsOpen={setIsDayModalOpen}
-        day={selectedDay}
-        events={events.filter((e) => e.day === selectedDay)}
-        onAddClick={handleAddClick}
-        onEditClick={handleEventClick}
-        onDelete={onDeleteEvent}
-      />
+      {/* Scrollable Time Grid with Red Line */}
+      <div
+        ref={redLineContainerRef}
+        className="overflow-y-auto max-h-[calc(100vh-200px)] relative"
+      >
+        <div className="grid grid-cols-[80px_repeat(7,minmax(0,1fr))]">
+          {Array.from({ length: 24 }, (_, hour) => (
+            <Fragment key={hour}>
+              <div className="border-t border-l pr-2 text-xs text-gray-500 bg-gray-50 h-14 flex items-start pt-1 justify-end">
+                {formatHour(hour)}
+              </div>
 
+              {weekDates.map((day, dayIndex) => (
+                <div
+                  key={`${dayIndex}-${hour}`}
+                  className="border-t border-l relative h-14 cursor-pointer day-column"
+                  onClick={(e) => handleTimeCellClick(dayIndex, hour, e)}
+                >
+                  {/* Events go here */}
+                </div>
+              ))}
+            </Fragment>
+          ))}
+        </div>
+
+        {/* Red Line Rendered After the Grid */}
+        {calendarRect && (
+          <div
+            className="absolute z-30 pointer-events-none"
+            style={{
+              top: `${topPx}px`,
+              left: `${calendarRect.left}px`,
+              width: `${calendarRect.width}px`,
+            }}
+          >
+            <div className="h-[2px] bg-red-500 w-[calc(100%-4px)] mx-auto" />
+          </div>
+        )}
+      </div>
+      
+
+      {/* Modal */}
       <EventModal
         isOpen={isEventModalOpen}
         setIsOpen={setIsEventModalOpen}
@@ -164,6 +175,7 @@ function Calendar({
         editingEvent={editingEvent}
         categories={categories}
         selectedHour={selectedHour}
+        modalPosition={modalPosition}
       />
     </div>
   );
