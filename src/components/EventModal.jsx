@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
 
-function EventModal({
+const EventModal = forwardRef(function EventModal({
   isOpen,
   setIsOpen,
   onSave,
@@ -10,23 +10,65 @@ function EventModal({
   editingEvent,
   categories,
   selectedHour,
-  modalPosition
-}) {
+  clickCoords,
+  selectedDate,
+  modalPosition,
+  setModalPosition,
+  setPendingEvent
+}, ref) {
+  const modalRef = useRef();
   const [title, setTitle] = useState("");
   const [budget, setBudget] = useState("");
   const [timeStart, setTimeStart] = useState("");
   const [timeEnd, setTimeEnd] = useState("");
   const [category, setCategory] = useState("");
+  const [date, setDate] = useState(editingEvent?.date || new Date().toISOString().split("T")[0]);
+
+  useImperativeHandle(ref, () => ({
+    getSize: () => {
+      const rect = modalRef.current?.getBoundingClientRect();
+      return rect ? { width: rect.width, height: rect.height } : { width: 300, height: 350 };
+    }
+  }));
+
+  useEffect(() => {
+    if (isOpen && clickCoords && modalRef.current) {
+      const modalWidth = modalRef.current.offsetWidth;
+      const modalHeight = modalRef.current.offsetHeight;
+      const padding = 8;
+      const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
+
+      let left = clickCoords.x + padding;
+      let top;
+
+      if (left + modalWidth > screenWidth) {
+        left = clickCoords.x - modalWidth - padding;
+      }
+
+      if (clickCoords.y + modalHeight + padding > screenHeight) {
+        top = clickCoords.y - modalHeight - padding;
+      } else {
+        top = clickCoords.y + padding;
+      }
+
+      top = Math.max(top, padding);
+      setModalPosition({ top: top + window.scrollY, left: left + window.scrollX });
+    }
+  }, [isOpen, clickCoords, setModalPosition]);
 
   useEffect(() => {
     if (isOpen) {
       if (editingEvent) {
+        setDate(editingEvent.date);
         setTitle(editingEvent.title || "");
         setBudget(editingEvent.budget || "");
         setTimeStart(editingEvent.timeStart || "");
         setTimeEnd(editingEvent.timeEnd || "");
         setCategory(editingEvent.category || "");
       } else {
+        const defaultDate = selectedDate || new Date().toISOString().split("T")[0];
+
         const now = new Date();
         const defaultStart = now.toTimeString().slice(0, 5);
         const defaultEnd = new Date(now.getTime() + 60 * 60 * 1000).toTimeString().slice(0, 5);
@@ -37,6 +79,7 @@ function EventModal({
           ? ((selectedHour + 1) % 24).toString().padStart(2, "0") + ":00"
           : defaultEnd;
 
+        setDate(defaultDate);
         setTitle("");
         setBudget("");
         setTimeStart(start);
@@ -44,11 +87,17 @@ function EventModal({
         setCategory("");
       }
     }
-  }, [isOpen, editingEvent, selectedHour]);
+  }, [isOpen, editingEvent, selectedHour, selectedDate]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setPendingEvent?.(null);
+    }
+  }, [isOpen]);
 
   function handleSubmit(e) {
     e.preventDefault();
-    onSave({ title, budget, timeStart, timeEnd, category });
+    onSave({ title, date, budget, timeStart, timeEnd, category });
     setIsOpen(false);
   }
 
@@ -63,7 +112,6 @@ function EventModal({
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
@@ -71,28 +119,21 @@ function EventModal({
             animate={{ opacity: 0 }}
             exit={{ opacity: 0 }}
           />
-
-          {/* Modal */}
           <motion.div
+            ref={modalRef}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
             transition={{ duration: 0.2 }}
-            className="absolute bg-white border shadow-md rounded-md p-4 z-50 w-72"
-            style={{
-              top: modalPosition?.top || 100,
-              left: modalPosition?.left || 100,
-            }}
+            className="fixed bg-white border shadow-md rounded-md p-4 z-50 w-72"
+            style={{ top: modalPosition?.top || 100, left: modalPosition?.left || 100 }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">
                 {editingEvent ? "Edit Event" : "Add Event"}
               </h2>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-gray-500 hover:text-gray-700 text-xl leading-none"
-              >
+              <button onClick={() => setIsOpen(false)} className="text-gray-500 hover:text-gray-700 text-xl leading-none">
                 ×
               </button>
             </div>
@@ -105,6 +146,15 @@ function EventModal({
                   className="w-full mt-1 border rounded px-2 py-1 text-sm"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Date</label>
+                <input
+                  type="date"
+                  className="w-full mt-1 border rounded px-2 py-1 text-sm"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
                 />
               </div>
 
@@ -154,7 +204,6 @@ function EventModal({
                   ))}
                 </select>
               </div>
-
               <div className="flex justify-between items-center pt-2">
                 <button
                   type="submit"
@@ -178,6 +227,6 @@ function EventModal({
       )}
     </AnimatePresence>
   );
-}
+});
 
 export default EventModal;
