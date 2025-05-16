@@ -1,7 +1,9 @@
+// App.jsx
 import { useState, useEffect } from "react";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import Calendar from "./components/Calendar";
+import { fetchEvents, saveEvent, deleteEvent } from "./services/eventService"; // Import service
 
 function App() {
   const [events, setEvents] = useState([]);
@@ -26,23 +28,25 @@ function App() {
     localStorage.setItem("categories", JSON.stringify(categories));
   }, [categories]);
 
+  // Fetch events from the backend
   useEffect(() => {
-    fetch("http://localhost:3001/events")
-      .then((res) => res.json())
-      .then((data) => {
+    const getEvents = async () => {
+      try {
+        const data = await fetchEvents();
         const mappedEvents = data.map((event) => ({
           ...event,
           timeStart: event.time_start,
           timeEnd: event.time_end,
         }));
-        console.log("✅ Mapped events:", mappedEvents);
         setEvents(mappedEvents);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Error fetching events:", err);
-      });
+      }
+    };
+    getEvents();
   }, []);
 
+  // Handle saving events (add or update)
   function handleSaveEvent({ title, budget, timeStart, timeEnd, category, date }) {
     if (!date) {
       alert("Error: No day selected");
@@ -67,26 +71,22 @@ function App() {
       category: category || "",
       date: date,
     };
+    // console.log("Event data:", eventData);
 
     try {
       if (editingEvent) {
-        // Handle update later (via PUT)
+        // Update event
         eventData.id = editingEvent.id;
-        setEvents((prev) =>
-          prev.map((event) =>
-            event.id === editingEvent.id ? { ...event, ...eventData } : event
-          )
-        );
+        saveEvent(eventData).then((updatedEvent) => {
+          setEvents((prev) =>
+            prev.map((event) =>
+              event.id === editingEvent.id ? { ...event, ...updatedEvent } : event
+            )
+          );
+        });
       } else {
-        fetch("http://localhost:3001/events", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(eventData),
-        })
-          .then((res) => res.json())
-          .then((newEvent) => {
+        // Add new event
+        saveEvent(eventData).then((newEvent) => {
             const mappedEvent = {
               ...newEvent,
               id: newEvent.id,
@@ -97,11 +97,8 @@ function App() {
               timeStart: newEvent.time_start,
               timeEnd: newEvent.time_end,
             };
-            setEvents((prev) => [...prev, mappedEvent]);
-          })
-          .catch((err) => {
-            console.error("Error saving event to backend:", err);
-          });
+          setEvents((prev) => [...prev, mappedEvent]);
+        });
       }
 
       setEditingEvent(null);
@@ -111,12 +108,10 @@ function App() {
     }
   }
 
+  // Handle deleting an event
   function handleDeleteEvent(eventToDelete) {
-    fetch(`http://localhost:3001/events/${eventToDelete.id}`, {
-      method: "DELETE",
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Delete failed");
+    deleteEvent(eventToDelete.id)
+      .then(() => {
         setEvents((prev) => prev.filter((event) => event.id !== eventToDelete.id));
       })
       .catch((err) => {
@@ -131,10 +126,6 @@ function App() {
     setSelectedDate(now.toISOString().split("T")[0]);
     setSelectedHour(hour);
 
-    // setModalPosition({
-    //   top: window.innerHeight / 2 + window.scrollY,
-    //   left: window.innerWidth / 2 + window.scrollX,
-    // })
     setEditingEvent(null);
     setIsEventModalOpen(true);
   }
