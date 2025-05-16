@@ -60,7 +60,7 @@ const EventModal = forwardRef(function EventModal({
   useEffect(() => {
     if (isOpen) {
       if (editingEvent) {
-        setDate(editingEvent.date);
+        setDate(new Date(editingEvent.date).toISOString().split("T")[0]);
         setTitle(editingEvent.title || "");
         setBudget(editingEvent.budget || "");
         setTimeStart(editingEvent.timeStart || "");
@@ -68,7 +68,6 @@ const EventModal = forwardRef(function EventModal({
         setCategory(editingEvent.category || "");
       } else {
         const defaultDate = selectedDate || new Date().toISOString().split("T")[0];
-
         const now = new Date();
         const defaultStart = now.toTimeString().slice(0, 5);
         const defaultEnd = new Date(now.getTime() + 60 * 60 * 1000).toTimeString().slice(0, 5);

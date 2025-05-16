@@ -11,8 +11,31 @@ function getStartOfWeek(date) {
 }
 
 function getMinutes(timeStr) {
-  const [h, m] = timeStr.split(":" ).map(Number);
-  return h * 60 + m;
+  // console.log("Time received for getMinutes:", timeStr);  // Log the time value being passed to getMinutes
+  if (timeStr === undefined) {
+    console.error("Time is undefined");  // Log if time is undefined
+    return 0;  // Return 0 if the input is invalid
+  }
+  
+  else if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) {
+    console.error("Invalid time format:", timeStr);  // Log if time is invalid
+    return 0;  // Return 0 if the input is invalid
+  }
+
+  // Ensure the time is in HH:mm:ss format
+  if (timeStr.length === 5) {
+    timeStr += ":00";  // Add seconds if it's in HH:mm format (e.g., "14:00" becomes "14:00:00")
+  }
+
+  const [h, m, s] = timeStr.split(":").map(Number);  // Split and convert to numbers
+
+  // Check if hour, minute, or second are NaN
+  if (isNaN(h) || isNaN(m) || isNaN(s)) {
+    console.error("Invalid time value:", timeStr);  // Log the error if parsing fails
+    return 0;
+  }
+
+  return h * 60 + m;  // Convert to total minutes
 }
 
 function formatHour(hour) {
@@ -158,7 +181,6 @@ function Calendar({
   return () => window.removeEventListener("mouseup", handleMouseUp);
 }, [isDragging, dragStart, dragEnd]);
 
-
   function handleTimeCellClick(day, hour) {
     const dateStr = day.toISOString().split("T")[0];
     const pending = {
@@ -171,9 +193,11 @@ function Calendar({
     };
 
     setPendingEvent(pending);
-    setSelectedDate(dateStr);
     setSelectedHour(hour);
     setEditingEvent(null);
+    setIsDragging(false);
+    setDragStart(null);
+    setDragEnd(null);
 
     setTimeout(() => {
       const previewEl = document.querySelector('[data-event-id="preview"]');
@@ -237,27 +261,25 @@ function Calendar({
                     setDragEnd({ hour });
                   }}
                   onClick={(e) => handleTimeCellClick(day, hour, e)}
-                  onMouseEnter={() => {
-                    if (isDragging && dragStart?.day?.toDateString() === day.toDateString()) {
-                      setDragEnd({ hour });
-                    }
-                  }}
-                  onMouseLeave={() => {
-                    if (isDragging) {
-                      setDragEnd({ hour });
-                    }
-                  }}
-                  onMouseMove={(e) => {
-                    if (isDragging) {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const offsetY = e.clientY - rect.top;
-                      const newHour = Math.floor((offsetY / rowHeight) * 24);
-                      setDragEnd({ day, hour: newHour });
-                    }
-                  }}
-                  
-
-
+                  // onMouseEnter={() => {
+                  //   if (isDragging && dragStart?.day?.toDateString() === day.toDateString()) {
+                  //     setDragEnd({ hour });
+                  //   }
+                  // }}
+                  // onMouseLeave={() => {
+                  //   if (isDragging) {
+                  //     setDragEnd({ hour });
+                  //   }
+                  // }}
+                  // onMouseMove={(e) => {
+                  //   if (isDragging) {
+                  //     const rect = e.currentTarget.getBoundingClientRect();
+                  //     const offsetY = e.clientY - rect.top;
+                  //     const newHour = Math.floor((offsetY / rowHeight) * 24);
+                  //     setDragEnd({ day, hour: newHour });
+                  //   }
+                  // }}
+            
                 >
                   {events
                     .filter(
@@ -297,30 +319,33 @@ function Calendar({
                       );
                     })}
 
-                {(pendingEvent || isDragging) &&
-                  dayjs((pendingEvent ?? dragStart)?.date).isSame(day, "day") &&
-                  (() => {
-                    const startHour = isDragging ? dragStart?.hour : getMinutes(pendingEvent.timeStart) / 60;
-                    const endHour = isDragging ? dragEnd?.hour + 1 : getMinutes(pendingEvent.timeEnd) / 60;
+                  {
+                    pendingEvent &&
+                    dayjs((pendingEvent ?? dragStart)?.date).isSame(day, "day") && (
+                      (() => {
+                        const startHour = getMinutes(pendingEvent.timeStart) / 60;
+                        const endHour = getMinutes(pendingEvent.timeEnd) / 60;
 
-                    if (startHour === undefined || endHour === undefined) return null;
+                        if (startHour === undefined || endHour === undefined) return null;
 
-                    const top = ((Math.min(startHour, endHour) - hour) / 1) * 100;
-                    const height = Math.abs(endHour - startHour) * 100;
+                        const top = ((Math.min(startHour, endHour) - hour) / 1) * 100;
+                        const height = Math.abs(endHour - startHour) * 100;
 
-                    return top >= 0 && top < 100 ? (
-                      <div
-                        data-event-id="preview"
-                        className="absolute left-[2px] right-[2px] px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-900 border border-blue-400 opacity-70 z-10"
-                        style={{
-                          top: `${top}%`,
-                          height: `${height}%`,
-                        }}
-                      >
-                        New Event
-                      </div>
-                    ) : null;
-                  })()}
+                        return top >= 0 && top < 100 ? (
+                          <div
+                            data-event-id="preview"
+                            className="absolute left-[2px] right-[2px] px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-900 border border-blue-400 opacity-70 z-10"
+                            style={{
+                              top: `${top}%`,
+                              height: `${height}%`,
+                            }}
+                          >
+                            New Event
+                          </div>
+                        ) : null;
+                      })()
+                    )
+                  }
                 </div>
               ))}
             </Fragment>

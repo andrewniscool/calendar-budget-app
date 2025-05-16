@@ -1,4 +1,4 @@
-CREATE TABLE events IF NOT EXISTS(
+CREATE TABLE events(
   id SERIAL PRIMARY KEY,
   user_id INTEGER,
   title TEXT NOT NULL,
@@ -9,6 +9,3 @@ CREATE TABLE events IF NOT EXISTS(
   budget NUMERIC DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-CREATE INDEX idx_events_user_id ON events (user_id);
-CREATE INDEX idx_events_date ON events (date);
