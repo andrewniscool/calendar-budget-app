@@ -1,8 +1,8 @@
 // src/controllers/categoryController.js (Backend)
-const categoryModel = require('../models/categoryModel');  // Import category model
+import * as categoryModel from '../models/categoryModel.js';
 
 // Get all categories
-const getCategories = async (req, res) => {
+export const getCategories = async (req, res) => {
   try {
     const categories = await categoryModel.getCategories();  // Get categories from the model
     res.json(categories);  // Send the categories as the response
@@ -12,7 +12,7 @@ const getCategories = async (req, res) => {
 };
 
 // Create a new category
-const createCategory = async (req, res) => {
+export const createCategory = async (req, res) => {
   const { name, color } = req.body;  // Get category data from the request body
   try {
     const newCategory = await categoryModel.createCategory({ name, color });  // Create category using the model
@@ -23,7 +23,7 @@ const createCategory = async (req, res) => {
 };
 
 // Delete a category
-const deleteCategory = async (req, res) => {
+export const deleteCategory = async (req, res) => {
   const { id } = req.params;  // Get category ID from the URL
   try {
     const deletedCategory = await categoryModel.deleteCategory(id);  // Delete category using the model
@@ -33,8 +33,3 @@ const deleteCategory = async (req, res) => {
   }
 };
 
-module.exports = {
-  getCategories,
-  createCategory,
-  deleteCategory,
-};
