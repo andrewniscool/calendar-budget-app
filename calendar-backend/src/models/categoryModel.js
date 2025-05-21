@@ -1,50 +1,44 @@
-// src/models/categoryModel.js (Backend)
+// src/models/categoryModel.js
+import { Pool } from 'pg';
+import dotenv from 'dotenv';
+dotenv.config({ path: '../.env' });
 
-const { Pool } = require('pg');
 const db = new Pool({
-  connectionString: process.env.DATABASE_URL, // Load connection string from .env
+  connectionString: process.env.DATABASE_URL,
 });
 
-// Get all categories from the database
-const getCategories = async () => {
+export const getCategories = async () => {
   try {
     const result = await db.query('SELECT * FROM categories');
-    return result.rows;  // Return the categories as an array of objects
+    return result.rows;
   } catch (error) {
     console.error('Error fetching categories:', error);
-    throw error; // Throw the error to be handled by the controller
+    throw error;
   }
 };
 
-// Create a new category in the database
-const createCategory = async (categoryData) => {
-  const { name, color } = categoryData;
-
+export const createCategory = async ({ name, color }) => {
   try {
     const result = await db.query(
-      'INSERT INTO categories (name, color) VALUES ($1, $2) RETURNING *', // Insert category into the database
-      [name, color]  // Values for name and color
+      'INSERT INTO categories (name, color) VALUES ($1, $2) RETURNING *',
+      [name, color]
     );
-    return result.rows[0]; // Return the newly created category
+    return result.rows[0];
   } catch (error) {
     console.error('Error creating category:', error);
-    throw error; // Throw the error to be handled by the controller
+    throw error;
   }
 };
 
-// Delete a category from the database
-const deleteCategory = async (id) => {
+export const deleteCategory = async (id) => {
   try {
-    const result = await db.query('DELETE FROM categories WHERE category_id = $1 RETURNING *', [id]); // Delete category by ID
-    return result.rows[0]; // Return the deleted category (if any)
+    const result = await db.query(
+      'DELETE FROM categories WHERE category_id = $1 RETURNING *',
+      [id]
+    );
+    return result.rows[0];
   } catch (error) {
     console.error('Error deleting category:', error);
-    throw error; // Throw the error to be handled by the controller
+    throw error;
   }
-};
-
-module.exports = {
-  getCategories,
-  createCategory,
-  deleteCategory,
 };
