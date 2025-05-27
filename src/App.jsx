@@ -78,9 +78,16 @@ function App() {
         // Update event
         eventData.id = editingEvent.id;
         saveEvent(eventData).then((updatedEvent) => {
+
+          const mappedEvent = {
+            ...updatedEvent,
+            timeStart: updatedEvent.time_start,
+            timeEnd: updatedEvent.time_end,
+          };
+
           setEvents((prev) =>
             prev.map((event) =>
-              event.id === editingEvent.id ? { ...event, ...updatedEvent } : event
+              event.id === editingEvent.id ? { ...event, ...mappedEvent } : event
             )
           );
         });
@@ -89,11 +96,6 @@ function App() {
         saveEvent(eventData).then((newEvent) => {
             const mappedEvent = {
               ...newEvent,
-              id: newEvent.id,
-              title: newEvent.title,
-              date: newEvent.date,
-              category: newEvent.category,
-              budget: newEvent.budget,
               timeStart: newEvent.time_start,
               timeEnd: newEvent.time_end,
             };
