@@ -1,15 +1,127 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   fetchCategories,
   createCategory,
   deleteCategory,
 } from "../services/categoryService";
+import { HiDotsVertical } from "react-icons/hi";
+import { MdDelete, MdErrorOutline } from "react-icons/md";
+import { FiChevronDown } from "react-icons/fi";
+import AddCategoryModal from "./AddCategoryModal";
+
 
 const presetColors = [  
   "#FFF689", "#F4D35E", "#FFB88A", "#FF9C5B", "#F67B45", "#FBC2C2", "#E39B99",
   "#CB7876", "#B4CFA4", "#8BA47C", "#62866C", "#A0C5E3", "#81B2D9", "#32769B",
   "#BBA6DD", "#8C7DA8", "#64557B", "#1E2136"
 ];
+
+function CategoryDropdown({ categories, onAddClick, handleDeleteCategory, toggleVisibility }) {
+  const [open, setOpen] = useState(false);
+  const handleAddClick = () => {
+  if (onAddClick) onAddClick();
+};
+
+  return (
+    <div className="relative">
+      <div className="flex items-center justify-between px-3 py-1 bg-gray-100 rounded-md hover:bg-gray-200 w-full">
+        <span className="text-sm font-medium">Categories</span>
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleAddClick} // 👈 you'll define this outside
+            className="text-blue-600 text-lg px-1 hover:text-blue-800"
+            title="Add Category"
+          >
+            +
+          </button>
+          <button
+            onClick={() => setOpen((prev) => !prev)}
+            className="p-1 hover:bg-gray-100 rounded-full"
+            title="Toggle Category List"
+          >
+            <FiChevronDown
+              size={20}
+              className={`transform transition ${open ? "rotate-180" : ""}`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {open && (
+        <div className="mt-2 space-y-2">
+          {categories.map((cat, i) => (
+            <label
+              key={cat.category_id || i}
+              className="relative group flex items-center justify-between px-2 py-1 hover:bg-gray-50 rounded-lg"
+            >
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={cat.visible}
+                  onChange={() => toggleVisibility(i)}
+                />
+                <span
+                  className="text-xs font-medium px-3 py-1 rounded-2xl"
+                  style={{
+                    backgroundColor: cat.color,
+                    color: getTextColor(cat.color),
+                    border: "none",
+                  }}
+                >
+                  {cat.name}
+                </span>
+              </div>
+              <MoreMenu onDelete={() => handleDeleteCategory(cat.category_id)} />
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MoreMenu({ onDelete }) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef();
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={() => setOpen((prev) => !prev)}
+        className="p-1 hover:bg-gray-100 rounded-full"
+        title="More options"
+      >
+        <HiDotsVertical size={18} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-1 w-28 bg-white border rounded shadow z-10">
+          <button
+            onClick={() => {
+              onDelete();
+              setOpen(false);
+            }}
+            className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-100"
+          >
+            <MdDelete size={16} />
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function getTextColor(bgColor) {
   const hex = bgColor.replace("#", "");
@@ -25,6 +137,7 @@ function CategoryManager({ categories, setCategories }) {
   const [selectedColor, setSelectedColor] = useState(presetColors[0]);
   const [error, setError] = useState("");
   const [showToast, setShowToast] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchCategories()
@@ -102,32 +215,19 @@ function CategoryManager({ categories, setCategories }) {
 
   return (
     <div>
-      <h3 className="text-lg font-bold mb-2">Categories</h3>
-      <div className="space-y-2">
-        {categories.map((cat, i) => (
-          <label key={cat.category_id || i} className="flex items-center gap-2 text-sm cursor-pointer group">
-            <input
-              type="checkbox"
-              checked={cat.visible}
-              onChange={() => toggleVisibility(i)}
-            />
-
-            <span
-              className="px-2 py-1 rounded-full text-xs font-medium"
-              style={{ backgroundColor: cat.color, color: getTextColor(cat.color) }}
-            >
-              {cat.name}
-            </span>
-            <button
-              onClick={() => handleDeleteCategory(cat.category_id)}
-              className="ml-auto text-red-500 hover:text-red-700 text-xs font-bold opacity-0 group-hover:opacity-100"
-              title="Delete"
-            >
-              ×
-            </button>
-          </label>
-        ))}
-      </div>
+      <CategoryDropdown
+        categories={categories}
+        handleDeleteCategory={handleDeleteCategory}
+        toggleVisibility={toggleVisibility}
+        error={error}
+        onAddClick={() => setIsModalOpen(true)}
+      />
+      <AddCategoryModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onAddCategory={handleAddCategory}
+        presetColors={presetColors}
+        />
 
       <div className="mt-4 border-t pt-4">
         <h4 className="text-sm font-semibold mb-2">Add Category</h4>
