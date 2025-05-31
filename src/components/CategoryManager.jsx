@@ -9,7 +9,6 @@ import { MdDelete, MdErrorOutline } from "react-icons/md";
 import { FiChevronDown } from "react-icons/fi";
 import AddCategoryModal from "./AddCategoryModal";
 
-
 const presetColors = [  
   "#FFF689", "#F4D35E", "#FFB88A", "#FF9C5B", "#F67B45", "#FBC2C2", "#E39B99",
   "#CB7876", "#B4CFA4", "#8BA47C", "#62866C", "#A0C5E3", "#81B2D9", "#32769B",
@@ -18,9 +17,10 @@ const presetColors = [
 
 function CategoryDropdown({ categories, onAddClick, handleDeleteCategory, toggleVisibility }) {
   const [open, setOpen] = useState(false);
+  
   const handleAddClick = () => {
-  if (onAddClick) onAddClick();
-};
+    if (onAddClick) onAddClick();
+  };
 
   return (
     <div className="relative">
@@ -29,7 +29,7 @@ function CategoryDropdown({ categories, onAddClick, handleDeleteCategory, toggle
 
         <div className="flex items-center gap-1">
           <button
-            onClick={handleAddClick} // 👈 you'll define this outside
+            onClick={handleAddClick}
             className="text-blue-600 text-lg px-1 hover:text-blue-800"
             title="Add Category"
           >
@@ -133,8 +133,6 @@ function getTextColor(bgColor) {
 }
 
 function CategoryManager({ categories, setCategories }) {
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [selectedColor, setSelectedColor] = useState(presetColors[0]);
   const [error, setError] = useState("");
   const [showToast, setShowToast] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -146,7 +144,7 @@ function CategoryManager({ categories, setCategories }) {
         setCategories(mapped);
       })
       .catch((err) => console.error("Error fetching categories:", err));
-  }, []);
+  }, [setCategories]);
 
   const toggleVisibility = (index) => {
     const updated = [...categories];
@@ -154,8 +152,8 @@ function CategoryManager({ categories, setCategories }) {
     setCategories(updated);
   };
 
-  const handleAddCategory = () => {
-    const trimmedName = newCategoryName.trim();
+  const handleAddCategory = (categoryData) => {
+    const trimmedName = categoryData.name.trim();
 
     if (trimmedName === "") {
       setError("Category name cannot be empty.");
@@ -178,15 +176,14 @@ function CategoryManager({ categories, setCategories }) {
 
     const newCat = {
       name: trimmedName,
-      color: selectedColor,
+      color: categoryData.color,
     };
 
     createCategory(newCat)
       .then((created) => {
         setCategories((prev) => [...prev, { ...created, visible: true }]);
-        setNewCategoryName("");
-        setSelectedColor(presetColors[0]);
         setError("");
+        setIsModalOpen(false); // Close modal on success
       })
       .catch(() => {
         setError("Failed to create category.");
@@ -219,77 +216,27 @@ function CategoryManager({ categories, setCategories }) {
         categories={categories}
         handleDeleteCategory={handleDeleteCategory}
         toggleVisibility={toggleVisibility}
-        error={error}
         onAddClick={() => setIsModalOpen(true)}
       />
+      
       <AddCategoryModal 
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setError(""); // Clear any errors when closing
+        }}
         onAddCategory={handleAddCategory}
         presetColors={presetColors}
-        />
+        error={error}
+      />
 
-      <div className="mt-4 border-t pt-4">
-        <h4 className="text-sm font-semibold mb-2">Add Category</h4>
-        {error && (
-          <p className="text-red-600 text-xs font-medium mb-2">{error}</p>
-        )}
-
-        <input
-          type="text"
-          placeholder="Name (E.g. Food, Shopping, Fun)"
-          value={newCategoryName}
-          onChange={(e) => setNewCategoryName(e.target.value)}
-          className="w-full mb-2 p-1 border rounded-md text-sm"
-        />
-
-        <div className="flex gap-2 flex-wrap mb-2">
-          {presetColors.map((color) => (
-            <button
-              key={color}
-              title={color}
-              className={`w-6 h-6 rounded-full border-2 transition ${
-                selectedColor === color ? "border-black scale-110" : "border-transparent"
-              }`}
-              style={{ backgroundColor: color }}
-              onClick={(e) => {
-                e.preventDefault();
-                setSelectedColor(color);
-              }}
-            />
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2 mt-2">
-          <button
-            className="bg-blue-600 text-white px-3 py-1 text-sm rounded-md hover:bg-blue-700"
-            onClick={handleAddCategory}
-          >
-            Add
-          </button>
-
-          {newCategoryName.trim() && (
-            <div
-              className="px-3 py-1 rounded-full text-sm font-medium shadow-sm border"
-              style={{
-                backgroundColor: selectedColor,
-                color: getTextColor(selectedColor),
-                borderColor: getTextColor(selectedColor) + "30",
-              }}
-            >
-              {newCategoryName}
-            </div>
-          )}
-        </div>
-
-        <div className="pt-4 border-t mt-4">
-          <button
-            onClick={handleClearAll}
-            className="text-red-600 text-sm font-medium hover:underline"
-          >
-            Clear All Categories
-          </button>
-        </div>
+      <div className="pt-4 border-t mt-4">
+        <button
+          onClick={handleClearAll}
+          className="text-red-600 text-sm font-medium hover:underline"
+        >
+          Clear All Categories
+        </button>
       </div>
 
       {showToast && (
@@ -300,5 +247,4 @@ function CategoryManager({ categories, setCategories }) {
     </div>
   );
 }
-
 export default CategoryManager;
