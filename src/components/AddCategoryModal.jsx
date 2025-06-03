@@ -1,30 +1,35 @@
+// ✅ Updated AddCategoryModal to support both Add and Edit modes
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 
-function AddCategoryModal({ isOpen, onClose, onAddCategory, presetColors, error }) {
+function AddCategoryModal({
+  isOpen,
+  onClose,
+  onAddCategory,
+  presetColors,
+  error,
+  defaultValues = null,
+}) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => setMounted(true), []);
 
-  const [name, setName] = useState("");
-  const [color, setColor] = useState(presetColors[0]);
+  const isEditing = Boolean(defaultValues);
+  const [name, setName] = useState(defaultValues?.name || "");
+  const [color, setColor] = useState(defaultValues?.color || presetColors[0]);
   const [localError, setLocalError] = useState("");
 
   useEffect(() => {
     if (isOpen) {
-      setName("");
-      setColor(presetColors[0]);
+      setName(defaultValues?.name || "");
+      setColor(defaultValues?.color || presetColors[0]);
       setLocalError("");
     }
-  }, [isOpen, presetColors]);
+  }, [isOpen, presetColors, defaultValues]);
 
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = "";
-      };
+      return () => (document.body.style.overflow = "");
     }
   }, [isOpen]);
 
@@ -34,32 +39,18 @@ function AddCategoryModal({ isOpen, onClose, onAddCategory, presetColors, error 
       setLocalError("Name required");
       return;
     }
-    onAddCategory({ name: name.trim(), color });
+    onAddCategory({ ...defaultValues, name: name.trim(), color });
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Escape") onClose();
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleSubmit();
-    }
-  };
-
-  // ⛔ SAFEGUARD AGAINST DOM NOT READY
   if (!isOpen || !mounted) return null;
-
   const modalRoot = document.getElementById("modal-root");
-  if (!modalRoot) {
-    console.error("modal-root not found in DOM");
-    return null;
-  }
+  if (!modalRoot) return null;
 
   return createPortal(
     <>
       <div className="fixed inset-0 z-40 bg-black bg-opacity-30" onClick={onClose} />
       <div
         className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
-        onKeyDown={handleKeyDown}
         tabIndex={-1}
       >
         <div
@@ -67,8 +58,13 @@ function AddCategoryModal({ isOpen, onClose, onAddCategory, presetColors, error 
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">Add Category</h2>
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-xl leading-none">
+            <h2 className="text-lg font-semibold">
+              {isEditing ? "Edit Category" : "Add Category"}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 text-xl leading-none"
+            >
               ×
             </button>
           </div>
@@ -79,7 +75,9 @@ function AddCategoryModal({ isOpen, onClose, onAddCategory, presetColors, error 
 
           <form onSubmit={handleSubmit}>
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Category name
+              </label>
               <input
                 className="w-full border p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter category name"
@@ -93,7 +91,9 @@ function AddCategoryModal({ isOpen, onClose, onAddCategory, presetColors, error 
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Color
+              </label>
               <div className="flex flex-wrap gap-2">
                 {presetColors.map((c) => (
                   <button
@@ -115,10 +115,7 @@ function AddCategoryModal({ isOpen, onClose, onAddCategory, presetColors, error 
                 <span className="text-xs text-gray-600 block mb-1">Preview:</span>
                 <span
                   className="text-xs font-medium px-3 py-1 rounded-2xl inline-block"
-                  style={{
-                    backgroundColor: color,
-                    color: getTextColor(color),
-                  }}
+                  style={{ backgroundColor: color, color: getTextColor(color) }}
                 >
                   {name.trim()}
                 </span>
@@ -137,7 +134,7 @@ function AddCategoryModal({ isOpen, onClose, onAddCategory, presetColors, error 
                 type="submit"
                 className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors text-sm"
               >
-                Add
+                {isEditing ? "Save" : "Add"}
               </button>
             </div>
           </form>

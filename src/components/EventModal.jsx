@@ -92,7 +92,7 @@ const EventModal = forwardRef(function EventModal({
     if (!isOpen) {
       setPendingEvent?.(null);
     }
-  }, [isOpen]);
+  }, [isOpen, setPendingEvent]);
 
   function handleSubmit(e) {
     e.preventDefault();
