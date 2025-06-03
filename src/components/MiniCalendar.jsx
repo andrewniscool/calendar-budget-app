@@ -25,8 +25,18 @@ function MiniCalendar() {
       <div className="flex items-center justify-between mb-2">
         <div className="text-sm font-semibold">{currentMonth.format("MMMM YYYY")}</div>
         <div className="flex gap-1">
-          <button onClick={goToPrevMonth} className="px-2">&lt;</button>
-          <button onClick={goToNextMonth} className="px-2">&gt;</button>
+          <button
+            onClick={goToPrevMonth}
+            className="w-5 h-5 rounded-full flex items-center justify-center text-xs transition-shadow hover:bg-gray-100 hover:shadow-sm hover:shadow-gray-400 transition-all duration-300 ease-in-out active:scale-[.92] active:bg-gray-200"
+          >
+            &lt;
+          </button>
+          <button
+            onClick={goToNextMonth}
+            className="w-5 h-5 rounded-full flex items-center justify-center text-xs transition-shadow hover:bg-gray-100 hover:shadow-sm hover:shadow-gray-400 transition-all duration-300 ease-in-out active:scale-[.92] active:bg-gray-200"
+          >
+            &gt;
+          </button>
         </div>
       </div>
 
