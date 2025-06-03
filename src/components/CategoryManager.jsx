@@ -1,35 +1,45 @@
-import { useEffect, useState, useRef } from "react";
+// ✅ Full CategoryManager with Add & Edit modal support (using 3-dot menu)
+import { useEffect, useState } from "react";
 import {
   fetchCategories,
   createCategory,
   deleteCategory,
 } from "../services/categoryService";
 import { HiDotsVertical } from "react-icons/hi";
-import { MdDelete, MdErrorOutline } from "react-icons/md";
+import { MdEdit, MdDelete } from "react-icons/md";
 import { FiChevronDown } from "react-icons/fi";
 import AddCategoryModal from "./AddCategoryModal";
 
-const presetColors = [  
+const presetColors = [
   "#FFF689", "#F4D35E", "#FFB88A", "#FF9C5B", "#F67B45", "#FBC2C2", "#E39B99",
   "#CB7876", "#B4CFA4", "#8BA47C", "#62866C", "#A0C5E3", "#81B2D9", "#32769B",
-  "#BBA6DD", "#8C7DA8", "#64557B", "#1E2136"
+  "#BBA6DD", "#8C7DA8", "#64557B", "#1E2136",
 ];
 
-function CategoryDropdown({ categories, onAddClick, handleDeleteCategory, toggleVisibility }) {
+function getTextColor(bgColor) {
+  const hex = bgColor.replace("#", "");
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? "#000000" : "#FFFFFF";
+}
+
+function CategoryDropdown({ categories, onAddClick, handleDeleteCategory, toggleVisibility, onEditClick }) {
   const [open, setOpen] = useState(false);
-  
-  const handleAddClick = () => {
-    if (onAddClick) onAddClick();
+  const [dropdownOpen, setDropdownOpen] = useState(null);
+
+  const toggleMenu = (id) => {
+    setDropdownOpen((prev) => (prev === id ? null : id));
   };
 
   return (
     <div className="relative">
       <div className="flex items-center justify-between px-3 py-1 bg-gray-100 rounded-md hover:bg-gray-200 w-full">
         <span className="text-sm font-medium">Categories</span>
-
         <div className="flex items-center gap-1">
           <button
-            onClick={handleAddClick}
+            onClick={onAddClick}
             className="text-blue-600 text-lg px-1 hover:text-blue-800"
             title="Add Category"
           >
@@ -47,33 +57,56 @@ function CategoryDropdown({ categories, onAddClick, handleDeleteCategory, toggle
           </button>
         </div>
       </div>
-
       {open && (
         <div className="mt-2 space-y-2">
           {categories.map((cat, i) => (
-            <label
-              key={cat.category_id || i}
-              className="relative group flex items-center justify-between px-2 py-1 hover:bg-gray-50 rounded-lg"
-            >
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={cat.visible}
-                  onChange={() => toggleVisibility(i)}
-                />
-                <span
-                  className="text-xs font-medium px-3 py-1 rounded-2xl"
-                  style={{
-                    backgroundColor: cat.color,
-                    color: getTextColor(cat.color),
-                    border: "none",
-                  }}
+            <div key={cat.category_id || i} className="relative group">
+              <label className="flex items-center justify-between px-2 py-1 hover:bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={cat.visible}
+                    onChange={() => toggleVisibility(i)}
+                  />
+                  <span
+                    className="text-xs font-medium px-3 py-1 rounded-2xl"
+                    style={{ backgroundColor: cat.color, color: getTextColor(cat.color) }}
+                  >
+                    {cat.name}
+                  </span>
+                </div>
+                <button
+                  onClick={() => toggleMenu(cat.category_id)}
+                  className="text-gray-500 hover:text-gray-700"
                 >
-                  {cat.name}
-                </span>
-              </div>
-              <MoreMenu onDelete={() => handleDeleteCategory(cat.category_id)} />
-            </label>
+                  <HiDotsVertical size={16} />
+                </button>
+              </label>
+              {dropdownOpen === cat.category_id && (
+                <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded shadow z-10 w-24 text-sm">
+                  <button
+                    onClick={() => {
+                      onEditClick(cat);
+                      setDropdownOpen(null);
+                    }}
+                    className="w-full px-3 py-1 hover:bg-gray-100 text-left"
+                  >
+                    <MdEdit className="inline mr-1" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleDeleteCategory(cat.category_id);
+                      setDropdownOpen(null);
+                    }}
+                    className="w-full px-3 py-1 hover:bg-gray-100 text-left text-red-500"
+                  >
+                    <MdDelete className="inline mr-1" />
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -81,61 +114,11 @@ function CategoryDropdown({ categories, onAddClick, handleDeleteCategory, toggle
   );
 }
 
-function MoreMenu({ onDelete }) {
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef();
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  return (
-    <div className="relative" ref={menuRef}>
-      <button
-        onClick={() => setOpen((prev) => !prev)}
-        className="p-1 hover:bg-gray-100 rounded-full"
-        title="More options"
-      >
-        <HiDotsVertical size={18} />
-      </button>
-
-      {open && (
-        <div className="absolute right-0 mt-1 w-28 bg-white border rounded shadow z-10">
-          <button
-            onClick={() => {
-              onDelete();
-              setOpen(false);
-            }}
-            className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-100"
-          >
-            <MdDelete size={16} />
-            Delete
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function getTextColor(bgColor) {
-  const hex = bgColor.replace("#", "");
-  const r = parseInt(hex.substr(0, 2), 16);
-  const g = parseInt(hex.substr(2, 2), 16);
-  const b = parseInt(hex.substr(4, 2), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.6 ? "#000000" : "#FFFFFF";
-}
-
 function CategoryManager({ categories, setCategories }) {
   const [error, setError] = useState("");
   const [showToast, setShowToast] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(null);
 
   useEffect(() => {
     fetchCategories()
@@ -155,59 +138,46 @@ function CategoryManager({ categories, setCategories }) {
   const handleAddCategory = (categoryData) => {
     const trimmedName = categoryData.name.trim();
 
-    if (trimmedName === "") {
-      setError("Category name cannot be empty.");
-      return;
-    }
-
-    if (categories.length >= 10) {
-      setError("You can only have up to 10 categories.");
-      return;
-    }
+    if (trimmedName === "") return setError("Category name cannot be empty.");
+    if (categories.length >= 10) return setError("You can only have up to 10 categories.");
 
     const nameExists = categories.some(
-      (cat) => cat.name.toLowerCase() === trimmedName.toLowerCase()
+      (cat) => cat.name.toLowerCase() === trimmedName.toLowerCase() && cat.category_id !== categoryData.category_id
     );
+    if (nameExists) return setError("Category name already exists.");
 
-    if (nameExists) {
-      setError("Category name already exists.");
+    if (categoryData.category_id) {
+      const updatedList = categories.map((cat) =>
+        cat.category_id === categoryData.category_id ? { ...cat, ...categoryData } : cat
+      );
+      setCategories(updatedList);
+      setIsModalOpen(false);
+      setEditingCategory(null);
       return;
     }
 
-    const newCat = {
-      name: trimmedName,
-      color: categoryData.color,
-    };
-
-    createCategory(newCat)
+    createCategory({ name: trimmedName, color: categoryData.color })
       .then((created) => {
         setCategories((prev) => [...prev, { ...created, visible: true }]);
         setError("");
-        setIsModalOpen(false); // Close modal on success
+        setIsModalOpen(false);
       })
-      .catch(() => {
-        setError("Failed to create category.");
-      });
+      .catch(() => setError("Failed to create category."));
   };
 
   const handleDeleteCategory = (id) => {
     deleteCategory(id)
-      .then(() => {
-        setCategories((prev) => prev.filter((cat) => cat.category_id !== id));
-      })
-      .catch((err) => {
-        console.error("Error deleting category:", err);
-      });
+      .then(() => setCategories((prev) => prev.filter((cat) => cat.category_id !== id)))
+      .catch((err) => console.error("Error deleting category:", err));
   };
 
   const handleClearAll = () => {
-    const confirmed = window.confirm("Clear all categories?");
-    if (!confirmed) return;
-
-    setCategories([]);
-    localStorage.removeItem("categories");
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
+    if (window.confirm("Clear all categories?")) {
+      setCategories([]);
+      localStorage.removeItem("categories");
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    }
   };
 
   return (
@@ -216,18 +186,27 @@ function CategoryManager({ categories, setCategories }) {
         categories={categories}
         handleDeleteCategory={handleDeleteCategory}
         toggleVisibility={toggleVisibility}
-        onAddClick={() => setIsModalOpen(true)}
+        onAddClick={() => {
+          setEditingCategory(null);
+          setIsModalOpen(true);
+        }}
+        onEditClick={(cat) => {
+          setEditingCategory(cat);
+          setIsModalOpen(true);
+        }}
       />
-      
-      <AddCategoryModal 
+
+      <AddCategoryModal
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
-          setError(""); // Clear any errors when closing
+          setEditingCategory(null);
+          setError("");
         }}
         onAddCategory={handleAddCategory}
         presetColors={presetColors}
         error={error}
+        defaultValues={editingCategory}
       />
 
       <div className="pt-4 border-t mt-4">
@@ -247,4 +226,5 @@ function CategoryManager({ categories, setCategories }) {
     </div>
   );
 }
+
 export default CategoryManager;

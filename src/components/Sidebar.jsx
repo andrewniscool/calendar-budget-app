@@ -1,4 +1,5 @@
 import CategoryManager from "./CategoryManager";
+import MiniCalendar from "./MiniCalendar";
 
 function Sidebar({ categories, setCategories, onAddEventClick }) {
   return (
@@ -15,6 +16,8 @@ function Sidebar({ categories, setCategories, onAddEventClick }) {
           + Add Event
         </button>
       </div>
+      {/* Mini Calendar Section */}
+      <MiniCalendar />
 
       {/* Category Manager Section */}
       <CategoryManager

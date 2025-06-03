@@ -179,7 +179,7 @@ function Calendar({
 
   window.addEventListener("mouseup", handleMouseUp);
   return () => window.removeEventListener("mouseup", handleMouseUp);
-}, [isDragging, dragStart, dragEnd]);
+}, [isDragging, dragStart, dragEnd, setSelectedDate, setSelectedHour, setEditingEvent, setModalPosition, setIsEventModalOpen]);
 
   function handleTimeCellClick(day, hour) {
     const dateStr = day.toISOString().split("T")[0];
