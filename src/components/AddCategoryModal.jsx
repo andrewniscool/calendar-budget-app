@@ -48,7 +48,10 @@ function AddCategoryModal({
 
   return createPortal(
     <>
-      <div className="fixed inset-0 z-40 bg-black bg-opacity-30" onClick={onClose} />
+      <div
+        className="fixed inset-0 z-40 bg-black bg-opacity-30"
+        onClick={onClose}
+      />
       <div
         className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
         tabIndex={-1}
@@ -102,17 +105,43 @@ function AddCategoryModal({
                     onClick={() => setColor(c)}
                     style={{ backgroundColor: c }}
                     className={`w-6 h-6 rounded-full border-2 transition-transform ${
-                      color === c ? "border-black scale-110" : "border-gray-300 hover:scale-105"
+                      color === c
+                        ? "border-black scale-110"
+                        : "border-gray-300 hover:scale-105"
                     }`}
                     title={c}
                   />
                 ))}
               </div>
+
+              <div className="mt-2">
+                <label
+                  className={`relative w-6 h-6 rounded-full border-2 cursor-pointer inline-block transition-transform ${
+                    !presetColors.includes(color)
+                      ? "border-black scale-110"
+                      : "border-gray-300 hover:scale-105"
+                  }`}
+                  title="Custom Color"
+                >
+                  <input
+                    type="color"
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                  />
+                  <div
+                    className="absolute inset-0 rounded-full pointer-events-none"
+                    style={{ backgroundColor: color }}
+                  />
+                </label>
+              </div>
             </div>
 
             {name.trim() && (
               <div className="mb-4">
-                <span className="text-xs text-gray-600 block mb-1">Preview:</span>
+                <span className="text-xs text-gray-600 block mb-1">
+                  Preview:
+                </span>
                 <span
                   className="text-xs font-medium px-3 py-1 rounded-2xl inline-block"
                   style={{ backgroundColor: color, color: getTextColor(color) }}
