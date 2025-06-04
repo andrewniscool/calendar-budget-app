@@ -4,7 +4,7 @@ import {
   fetchCategories,
   createCategory,
   deleteCategory,
-} from "../services/categoryService";
+} from "../../services/categoryService";
 import { HiDotsVertical } from "react-icons/hi";
 import { MdEdit, MdDelete } from "react-icons/md";
 import { FiChevronDown } from "react-icons/fi";

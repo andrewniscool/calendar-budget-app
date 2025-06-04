@@ -1,0 +1,94 @@
+.select {
+  width: fit-content;
+  cursor: pointer;
+  position: relative;
+  transition: 300ms;
+  color: white;
+  overflow: visible;
+  font-family: system-ui, sans-serif;
+}
+
+.selected {
+  background-color: #2a2f3b;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  position: relative;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 140px;
+}
+
+.arrow {
+  height: 12px;
+  width: 20px;
+  fill: white;
+  transition: 300ms;
+  transform: rotate(-90deg);
+}
+
+.select.open .arrow {
+  transform: rotate(0deg);
+}
+
+.options {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  background-color: #2a2f3b;
+  border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  padding: 8px 0;
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.select.open .options {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.option {
+  font-size: 15px;
+  padding: 10px 16px;
+  background-color: transparent;
+  border-radius: 6px;
+  transition: 0.2s ease;
+  cursor: pointer;
+  color: white;
+  width: 100%;
+  text-align: left;
+}
+.option:hover {
+  background-color: #3a3f4c;
+}
+
+.options input[type="radio"] {
+  display: none;
+}
+
+.options label {
+  display: inline-block;
+  width: 100%;
+}
+.options label::before {
+  content: attr(data-txt);
+}
+
+.options input[type="radio"]:checked + label {
+  font-weight: bold;
+  background-color: #1e293b;
+  border-radius: 6px;
+}
+
+body {
+  overflow-x: hidden; /* prevent scrollbar shift */
+}
