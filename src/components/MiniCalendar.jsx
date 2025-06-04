@@ -27,13 +27,13 @@ function MiniCalendar() {
         <div className="flex gap-1">
           <button
             onClick={goToPrevMonth}
-            className="w-5 h-5 rounded-full flex items-center justify-center text-xs transition-shadow hover:bg-gray-100 hover:shadow-sm hover:shadow-gray-400 transition-all duration-300 ease-in-out active:scale-[.92] active:bg-gray-200"
+            className="w-5 h-5 rounded-full flex items-center justify-center text-xs transition-shadow hover:bg-gray-100 hover:shadow-sm hover:shadow-gray-400 transition-all duration-6000 ease-in-out active:scale-[.92] active:bg-gray-200"
           >
             &lt;
           </button>
           <button
             onClick={goToNextMonth}
-            className="w-5 h-5 rounded-full flex items-center justify-center text-xs transition-shadow hover:bg-gray-100 hover:shadow-sm hover:shadow-gray-400 transition-all duration-300 ease-in-out active:scale-[.92] active:bg-gray-200"
+            className="w-5 h-5 rounded-full flex items-center justify-center text-xs transition-shadow hover:bg-gray-100 hover:shadow-sm hover:shadow-gray-400 transition-all duration-6000 ease-in-out active:scale-[.92] active:bg-gray-200"
           >
             &gt;
           </button>
@@ -46,14 +46,14 @@ function MiniCalendar() {
 
       <div className="grid grid-cols-7 gap-1 text-sm">
         {days.map((day, i) => (
-          <div
+          <button
             key={i}
             className={`aspect-square rounded-full flex items-center justify-center ${
-              day?.isSame(dayjs(), "day") ? "bg-blue-500 text-white" : ""
+              day?.isSame(dayjs(), "day") ? "bg-blue-500 text-white transition-shadow hover:bg-blue-600 hover:shadow-sm transition-all duration-6000 ease-in-out active:scale-[.92] active:bg-blue-700" : "transition-shadow hover:bg-gray-100 hover:shadow-sm hover:shadow-gray-400 transition-all duration-6000 ease-in-out active:scale-[.92] active:bg-gray-200"
             }`}
           >
             {day ? day.date() : ""}
-          </div>
+          </button>
         ))}
       </div>
     </div>
