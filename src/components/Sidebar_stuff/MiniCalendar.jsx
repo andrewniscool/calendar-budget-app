@@ -1,7 +1,7 @@
 import { useState } from "react";
 import dayjs from "dayjs";
 
-function MiniCalendar() {
+function MiniCalendar({ onDateClick }) {
   const [currentMonth, setCurrentMonth] = useState(dayjs());
 
   const goToPrevMonth = () => setCurrentMonth(prev => prev.subtract(1, "month"));
@@ -48,6 +48,7 @@ function MiniCalendar() {
         {days.map((day, i) => (
           <button
             key={i}
+            onClick={() => day && onDateClick(day.format("YYYY-MM-DD"))}
             className={`aspect-square rounded-full flex items-center justify-center ${
               day?.isSame(dayjs(), "day") ? "bg-blue-500 text-white transition-shadow hover:bg-blue-600 hover:shadow-sm transition-all duration-6000 ease-in-out active:scale-[.92] active:bg-blue-700" : "transition-shadow hover:bg-gray-100 hover:shadow-sm hover:shadow-gray-400 transition-all duration-6000 ease-in-out active:scale-[.92] active:bg-gray-200"
             }`}

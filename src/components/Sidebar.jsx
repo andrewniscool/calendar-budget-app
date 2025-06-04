@@ -1,7 +1,11 @@
-import CategoryManager from "./CategoryManager";
-import MiniCalendar from "./MiniCalendar";
+import CategoryManager from "./Sidebar_stuff/CategoryManager";
+import MiniCalendar from "./Sidebar_stuff/MiniCalendar";
 
-function Sidebar({ categories, setCategories, onAddEventClick }) {
+function Sidebar({ categories,
+  setCategories,
+  onAddEventClick,
+  setSelectedDate,
+  setViewMode }) {
   return (
     <div className="w-64 bg-white shadow-md p-4 space-y-6 max-h-screen overflow-y-auto sticky top-0">
       {/* Monthly Budget Section */}
@@ -17,7 +21,12 @@ function Sidebar({ categories, setCategories, onAddEventClick }) {
         </button>
       </div>
       {/* Mini Calendar Section */}
-      <MiniCalendar />
+      <MiniCalendar
+        onDateClick={(date) => {
+          setSelectedDate(date);  // e.g., "2025-06-03"
+          setViewMode("day");
+        }}
+      />
 
       {/* Category Manager Section */}
       <CategoryManager
