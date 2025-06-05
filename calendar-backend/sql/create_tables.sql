@@ -9,6 +9,7 @@ CREATE TABLE events(
   budget NUMERIC DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
 CREATE TABLE categories (
   category_id SERIAL PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,
