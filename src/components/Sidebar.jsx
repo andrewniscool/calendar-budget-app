@@ -5,6 +5,7 @@ function Sidebar({ categories,
   setCategories,
   onAddEventClick,
   setSelectedDate,
+  viewMode,
   setViewMode }) {
   return (
     <div className="w-64 bg-white shadow-md p-4 space-y-6 max-h-screen overflow-y-auto sticky top-0">
@@ -26,6 +27,7 @@ function Sidebar({ categories,
           setSelectedDate(date);  // e.g., "2025-06-03"
           setViewMode("day");
         }}
+        viewMode={viewMode}
       />
 
       {/* Category Manager Section */}

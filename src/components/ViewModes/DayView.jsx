@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import dayjs from "dayjs";
-import EventModal from "./EventModal";
+import EventModal from "../EventModal";
 
 function getMinutes(timeStr) {
   if (!timeStr || !timeStr.includes(":")) return 0;

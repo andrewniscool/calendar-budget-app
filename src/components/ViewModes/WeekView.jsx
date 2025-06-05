@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState, useRef, useLayoutEffect } from "react";
 import dayjs from "dayjs";
-import EventModal from "./EventModal";
+import EventModal from "../EventModal";
 
 function getStartOfWeek(date) {
   const start = new Date(date);

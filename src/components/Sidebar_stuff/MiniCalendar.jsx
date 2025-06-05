@@ -1,7 +1,7 @@
 import { useState } from "react";
 import dayjs from "dayjs";
 
-function MiniCalendar({ onDateClick }) {
+function MiniCalendar({ onDateClick, viewMode }) {
   const [currentMonth, setCurrentMonth] = useState(dayjs());
   const [viewedDate, setViewedDate] = useState(null); 
 
@@ -56,7 +56,7 @@ function MiniCalendar({ onDateClick }) {
 
           if (isToday) {
             className += " bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 active:scale-[.92]";
-          } else if (isViewed) {
+          } else if (isViewed && viewMode === "day") {
             className += " bg-gray-200 text-black hover:bg-gray-300 active:bg-gray-400 active:scale-[.92]";
           } else {
             className += " hover:bg-gray-100 hover:shadow-sm active:bg-gray-200 active:scale-[.92]";
