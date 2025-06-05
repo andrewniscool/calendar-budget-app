@@ -3,6 +3,8 @@ import dayjs from "dayjs";
 
 function MiniCalendar({ onDateClick }) {
   const [currentMonth, setCurrentMonth] = useState(dayjs());
+  const [viewedDate, setViewedDate] = useState(null); 
+
 
   const goToPrevMonth = () => setCurrentMonth(prev => prev.subtract(1, "month"));
   const goToNextMonth = () => setCurrentMonth(prev => prev.add(1, "month"));
@@ -27,13 +29,13 @@ function MiniCalendar({ onDateClick }) {
         <div className="flex gap-1">
           <button
             onClick={goToPrevMonth}
-            className="w-5 h-5 rounded-full flex items-center justify-center text-xs transition-shadow hover:bg-gray-100 hover:shadow-sm hover:shadow-gray-400 transition-all duration-6000 ease-in-out active:scale-[.92] active:bg-gray-200"
+            className="w-5 h-5 rounded-full flex items-center justify-center text-xs transition-shadow hover:bg-gray-100 hover:shadow-sm hover:shadow-gray-400 transition-all duration-500 ease-in-out active:scale-[.92] active:bg-gray-200"
           >
             &lt;
           </button>
           <button
             onClick={goToNextMonth}
-            className="w-5 h-5 rounded-full flex items-center justify-center text-xs transition-shadow hover:bg-gray-100 hover:shadow-sm hover:shadow-gray-400 transition-all duration-6000 ease-in-out active:scale-[.92] active:bg-gray-200"
+            className="w-5 h-5 rounded-full flex items-center justify-center text-xs transition-shadow hover:bg-gray-100 hover:shadow-sm hover:shadow-gray-400 transition-all duration-500 ease-in-out active:scale-[.92] active:bg-gray-200"
           >
             &gt;
           </button>
@@ -45,17 +47,37 @@ function MiniCalendar({ onDateClick }) {
       </div>
 
       <div className="grid grid-cols-7 gap-1 text-sm">
-        {days.map((day, i) => (
-          <button
-            key={i}
-            onClick={() => day && onDateClick(day.format("YYYY-MM-DD"))}
-            className={`aspect-square rounded-full flex items-center justify-center ${
-              day?.isSame(dayjs(), "day") ? "bg-blue-500 text-white transition-shadow hover:bg-blue-600 hover:shadow-sm transition-all duration-6000 ease-in-out active:scale-[.92] active:bg-blue-700" : "transition-shadow hover:bg-gray-100 hover:shadow-sm hover:shadow-gray-400 transition-all duration-6000 ease-in-out active:scale-[.92] active:bg-gray-200"
-            }`}
-          >
-            {day ? day.date() : ""}
-          </button>
-        ))}
+        {days.map((day, i) => {
+          const isToday = day && day.isSame(dayjs(), "day");
+          const isViewed = day && viewedDate && day.isSame(viewedDate, "day");
+
+
+          let className = "aspect-square rounded-full flex items-center justify-center text-gray-700 transition-all duration-300 ease-in-out";
+
+          if (isToday) {
+            className += " bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 active:scale-[.92]";
+          } else if (isViewed) {
+            className += " bg-gray-200 text-black hover:bg-gray-300 active:bg-gray-400 active:scale-[.92]";
+          } else {
+            className += " hover:bg-gray-100 hover:shadow-sm active:bg-gray-200 active:scale-[.92]";
+          }
+
+          return (
+            <button
+              key={i}
+              onClick={() => {
+                if (day) {
+                  setViewedDate(day); // ✅ Update internal state
+                  onDateClick?.(day.format("YYYY-MM-DD")); // ✅ Optional chaining in case it's undefined
+                }
+              }}
+              className={className}
+            >
+              {day ? day.date() : ""}
+            </button>
+          );
+        })}
+
       </div>
     </div>
   );

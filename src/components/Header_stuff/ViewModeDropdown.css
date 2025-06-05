@@ -9,7 +9,7 @@
 }
 
 .selected {
-  background-color: #2a2f3b;
+  background-color: #3e68ca;
   padding: 10px 14px;
   border-radius: 8px;
   font-size: 16px;
@@ -39,7 +39,7 @@
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  background-color: #2a2f3b;
+  background-color: #3e68ca;
   border-radius: 8px;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
   padding: 8px 0;
@@ -48,6 +48,7 @@
   transform: translateY(-10px);
   pointer-events: none;
   transition: opacity 0.3s ease, transform 0.3s ease;
+  width: 100%;
 }
 
 .select.open .options {
@@ -68,7 +69,7 @@
   text-align: left;
 }
 .option:hover {
-  background-color: #3a3f4c;
+  background-color: #3e68ca;
 }
 
 .options input[type="radio"] {
