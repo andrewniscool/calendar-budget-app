@@ -12,6 +12,8 @@ function App() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedHour, setSelectedHour] = useState(null);
   const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
+  const [viewMode, setViewMode] = useState("week"); // default to 'week'
+
 
   const [categories, setCategories] = useState(() => {
     const saved = localStorage.getItem("categories");
@@ -134,15 +136,21 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col">
-      <Header />
+      <Header viewMode={viewMode} setViewMode={setViewMode} />
+
       <div className="flex flex-1 bg-gray-50 rounded-xl m-4 overflow-hidden shadow">
         <Sidebar
           categories={categories}
           setCategories={setCategories}
           onAddEventClick={handleAddEventClick}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
         />
         <main className="flex-1 h-full overflow-hidden">
           <Calendar
+            viewMode={viewMode}
             categories={categories}
             events={events}
             setEvents={setEvents}
