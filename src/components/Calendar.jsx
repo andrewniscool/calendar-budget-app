@@ -1,12 +1,12 @@
 import React from 'react';
-import WeekView from './WeekView';
-import DayView from './DayView';
-//import DayView from './DayView';
-//import MonthView from './MonthView';
+import WeekView from './ViewModes/WeekView';
+import DayView from './ViewModes/DayView';
+import MonthView from './ViewModes/MonthView';
 //import YearView from './YearView';
 
 function Calendar({
     viewMode,
+    setViewMode,
     categories,
     events,
     editingEvent,
@@ -23,54 +23,57 @@ function Calendar({
     setModalPosition,
 }) {
   
-if (viewMode === 'day') {
-    // return <DayView {...props} />;
-    return (
+  switch (viewMode) {
+    case 'day':
+      // return <DayView {...props} />;
+      return (
         <DayView
-        categories={categories}
-        events={events}
-        editingEvent={editingEvent}
-        setEditingEvent={setEditingEvent}
-        isEventModalOpen={isEventModalOpen}
-        setIsEventModalOpen={setIsEventModalOpen}
-        selectedDate={selectedDate}
-        setSelectedDate={setSelectedDate}
-        selectedHour={selectedHour}
-        setSelectedHour={setSelectedHour}
-        onSaveEvent={onSaveEvent}
-        onDeleteEvent={onDeleteEvent}
-        modalPosition={modalPosition}
-        setModalPosition={setModalPosition}
-      />
-);
-  }
-  else if (viewMode === 'month') {
-    // return <MonthView {...props} />;
-    return <div>Month View is not implemented yet.</div>;
-  }
-  else if (viewMode === 'year') {
-    // return <YearView {...props} />;
-    return <div>Year View is not implemented yet.</div>;
-  }
-  else{
-        return (
-      <WeekView
-        categories={categories}
-        events={events}
-        editingEvent={editingEvent}
-        setEditingEvent={setEditingEvent}
-        isEventModalOpen={isEventModalOpen}
-        setIsEventModalOpen={setIsEventModalOpen}
-        selectedDate={selectedDate}
-        setSelectedDate={setSelectedDate}
-        selectedHour={selectedHour}
-        setSelectedHour={setSelectedHour}
-        onSaveEvent={onSaveEvent}
-        onDeleteEvent={onDeleteEvent}
-        modalPosition={modalPosition}
-        setModalPosition={setModalPosition}
-      />
-    );
+          categories={categories}
+          events={events}
+          editingEvent={editingEvent}
+          setEditingEvent={setEditingEvent}
+          isEventModalOpen={isEventModalOpen}
+          setIsEventModalOpen={setIsEventModalOpen}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          selectedHour={selectedHour}
+          setSelectedHour={setSelectedHour}
+          onSaveEvent={onSaveEvent}
+          onDeleteEvent={onDeleteEvent}
+          modalPosition={modalPosition}
+          setModalPosition={setModalPosition}
+        />
+      );
+    case 'month':
+      return (
+        <MonthView
+          setViewMode={setViewMode}
+          setSelectedDate={setSelectedDate}
+          
+        />
+      );
+    case 'year':
+      // return <YearView {...props} />;
+      return <div>Year View is not implemented yet.</div>;
+    default:
+      return (
+        <WeekView
+          categories={categories}
+          events={events}
+          editingEvent={editingEvent}
+          setEditingEvent={setEditingEvent}
+          isEventModalOpen={isEventModalOpen}
+          setIsEventModalOpen={setIsEventModalOpen}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          selectedHour={selectedHour}
+          setSelectedHour={setSelectedHour}
+          onSaveEvent={onSaveEvent}
+          onDeleteEvent={onDeleteEvent}
+          modalPosition={modalPosition}
+          setModalPosition={setModalPosition}
+        />
+      );
   }
 }
 export default Calendar;

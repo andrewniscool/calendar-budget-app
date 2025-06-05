@@ -13,6 +13,7 @@ function App() {
   const [selectedHour, setSelectedHour] = useState(null);
   const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
   const [viewMode, setViewMode] = useState("week"); // default to 'week'
+  
 
 
   const [categories, setCategories] = useState(() => {
@@ -151,6 +152,7 @@ function App() {
         <main className="flex-1 h-full overflow-hidden">
           <Calendar
             viewMode={viewMode}
+            setViewMode={setViewMode}
             categories={categories}
             events={events}
             setEvents={setEvents}

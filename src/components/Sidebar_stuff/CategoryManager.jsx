@@ -9,6 +9,7 @@ import { HiDotsVertical } from "react-icons/hi";
 import { MdEdit, MdDelete } from "react-icons/md";
 import { FiChevronDown } from "react-icons/fi";
 import AddCategoryModal from "./AddCategoryModal";
+import "../styles/checkbox.css"; // Ensure you have the correct path to your CSS
 
 const presetColors = [
   "#FFF689", "#F4D35E", "#FFB88A", "#FF9C5B", "#F67B45", "#FBC2C2", "#E39B99",
@@ -67,6 +68,7 @@ function CategoryDropdown({ categories, onAddClick, handleDeleteCategory, toggle
                     type="checkbox"
                     checked={cat.visible}
                     onChange={() => toggleVisibility(i)}
+                    className="ui-checkbox"
                   />
                   <span
                     className="text-xs font-medium px-3 py-1 rounded-2xl"
