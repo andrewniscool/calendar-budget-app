@@ -1,4 +1,3 @@
-// ✅ Updated AddCategoryModal to support both Add and Edit modes
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 
@@ -11,18 +10,23 @@ function AddCategoryModal({
   defaultValues = null,
 }) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
-  const isEditing = Boolean(defaultValues);
   const [name, setName] = useState(defaultValues?.name || "");
   const [color, setColor] = useState(defaultValues?.color || presetColors[0]);
   const [localError, setLocalError] = useState("");
+  const [customColors, setCustomColors] = useState([]);
+  const [pendingColor, setPendingColor] = useState("");
+  const [view, setView] = useState("main");
+
+  const isEditing = Boolean(defaultValues);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (isOpen) {
       setName(defaultValues?.name || "");
       setColor(defaultValues?.color || presetColors[0]);
       setLocalError("");
+      setView("main");
     }
   }, [isOpen, presetColors, defaultValues]);
 
@@ -57,116 +61,154 @@ function AddCategoryModal({
         tabIndex={-1}
       >
         <div
-          className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm relative pointer-events-auto"
+          className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md relative pointer-events-auto overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">
-              {isEditing ? "Edit Category" : "Add Category"}
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 text-xl leading-none"
-            >
-              ×
-            </button>
-          </div>
-
-          {(localError || error) && (
-            <p className="text-red-600 text-sm mb-2">{localError || error}</p>
-          )}
-
-          <form onSubmit={handleSubmit}>
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category name
-              </label>
-              <input
-                className="w-full border p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter category name"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setLocalError("");
-                }}
-                autoFocus
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Color
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {presetColors.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setColor(c)}
-                    style={{ backgroundColor: c }}
-                    className={`w-6 h-6 rounded-full border-2 transition-transform ${
-                      color === c
-                        ? "border-black scale-110"
-                        : "border-gray-300 hover:scale-105"
-                    }`}
-                    title={c}
-                  />
-                ))}
+          {/* Sliding container for main and color picker views */}
+          <div
+            className="flex transition-transform duration-500 ease-in-out w-[200%]"
+            style={{
+              transform:
+                view === "main" ? "translateX(0%)" : "translateX(-50%)",
+            }}
+          >
+            {/* MAIN FORM VIEW */}
+            <div className="w-1/2 shrink-0 px-5 sm:px-4 space-y-4">
+              <div className="flex justify-between items-center">
+                <h2 className="text-lg font-semibold">
+                  {isEditing ? "Edit Category" : "Add Category"}
+                </h2>
+                <button
+                  onClick={onClose}
+                  className="text-gray-500 hover:text-gray-700 text-xl leading-none"
+                >
+                  ×
+                </button>
               </div>
 
-              <div className="mt-2">
-                <label
-                  className={`relative w-6 h-6 rounded-full border-2 cursor-pointer inline-block transition-transform ${
-                    !presetColors.includes(color)
-                      ? "border-black scale-110"
-                      : "border-gray-300 hover:scale-105"
-                  }`}
-                  title="Custom Color"
-                >
+              {(localError || error) && (
+                <p className="text-red-600 text-sm">{localError || error}</p>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Category name
+                  </label>
                   <input
-                    type="color"
-                    value={color}
-                    onChange={(e) => setColor(e.target.value)}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    className="w-full border p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter category name"
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      setLocalError("");
+                    }}
+                    autoFocus
                   />
-                  <div
-                    className="absolute inset-0 rounded-full pointer-events-none"
-                    style={{ backgroundColor: color }}
-                  />
-                </label>
-              </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Color
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {[...presetColors, ...customColors].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setColor(c)}
+                        style={{ backgroundColor: c }}
+                        className={`w-6 h-6 rounded-full border-2 transition-transform ${
+                          color === c
+                            ? "border-black scale-110"
+                            : "border-gray-300 hover:scale-105"
+                        }`}
+                        title={c}
+                      />
+                    ))}
+
+                    <button
+                      type="button"
+                      className="w-6 h-6 rounded-full border-2 border-dashed border-gray-400 flex items-center justify-center text-gray-600 text-base font-bold cursor-pointer hover:border-black transition-transform"
+                      title="Add custom color"
+                      onClick={() => setView("colorPicker")}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {name.trim() && (
+                  <div>
+                    <span className="text-xs text-gray-600 block mb-1">
+                      Preview:
+                    </span>
+                    <span
+                      className="text-xs font-medium px-3 py-1 rounded-2xl inline-block"
+                      style={{
+                        backgroundColor: color,
+                        color: getTextColor(color),
+                      }}
+                    >
+                      {name.trim()}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 transition-colors text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors text-sm"
+                  >
+                    {isEditing ? "Save" : "Add"}
+                  </button>
+                </div>
+              </form>
             </div>
 
-            {name.trim() && (
-              <div className="mb-4">
-                <span className="text-xs text-gray-600 block mb-1">
-                  Preview:
-                </span>
-                <span
-                  className="text-xs font-medium px-3 py-1 rounded-2xl inline-block"
-                  style={{ backgroundColor: color, color: getTextColor(color) }}
+            {/* COLOR PICKER VIEW */}
+            <div className="w-1/2 shrink-0 px-5 sm:px-4 space-y-4">
+              <h2 className="text-lg font-semibold mb-2">Pick a Color</h2>
+              <input
+                type="color"
+                className="w-full h-16 cursor-pointer"
+                value={pendingColor || "#ffffff"}
+                onChange={(e) => setPendingColor(e.target.value)}
+              />
+
+              <div className="flex justify-between pt-4">
+                <button
+                  className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm"
+                  onClick={() => setView("main")}
                 >
-                  {name.trim()}
-                </span>
+                  Back
+                </button>
+                <button
+                  className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 text-sm"
+                  onClick={() => {
+                    if (
+                      pendingColor &&
+                      ![...presetColors, ...customColors].includes(pendingColor)
+                    ) {
+                      setCustomColors((prev) => [...prev, pendingColor]);
+                      setColor(pendingColor);
+                      setPendingColor("");
+                    }
+                    setView("main");
+                  }}
+                >
+                  Use Color
+                </button>
               </div>
-            )}
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 transition-colors text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors text-sm"
-              >
-                {isEditing ? "Save" : "Add"}
-              </button>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </>,
