@@ -2,7 +2,9 @@ import React from 'react';
 import WeekView from './ViewModes/WeekView';
 import DayView from './ViewModes/DayView';
 import MonthView from './ViewModes/MonthView';
-//import YearView from './YearView';
+import YearView from './ViewModes/YearView';
+
+import { useState } from 'react';
 
 function Calendar({
     viewMode,
@@ -22,6 +24,7 @@ function Calendar({
     modalPosition,
     setModalPosition,
 }) {
+  const [pendingEvent, setPendingEvent] = useState(null);
   
   switch (viewMode) {
     case 'day':
@@ -42,19 +45,41 @@ function Calendar({
           onDeleteEvent={onDeleteEvent}
           modalPosition={modalPosition}
           setModalPosition={setModalPosition}
+          pendingEvent={pendingEvent}
+          setPendingEvent={setPendingEvent}
         />
       );
     case 'month':
       return (
         <MonthView
-          setViewMode={setViewMode}
+          categories={categories}
+          events={events}
+          editingEvent={editingEvent}
+          setEditingEvent={setEditingEvent}
+          isEventModalOpen={isEventModalOpen}
+          setIsEventModalOpen={setIsEventModalOpen}
+          selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
-          
+          selectedHour={selectedHour}
+          setSelectedHour={setSelectedHour}
+          onSaveEvent={onSaveEvent}
+          onDeleteEvent={onDeleteEvent}
+          modalPosition={modalPosition}
+          setModalPosition={setModalPosition}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          pendingEvent={pendingEvent}
+          setPendingEvent={setPendingEvent}
+
         />
       );
     case 'year':
-      // return <YearView {...props} />;
-      return <div>Year View is not implemented yet.</div>;
+      return (
+      <YearView
+        setSelectedDate={setSelectedDate}
+        setViewMode={setViewMode}
+      />
+    );
     default:
       return (
         <WeekView
@@ -72,6 +97,8 @@ function Calendar({
           onDeleteEvent={onDeleteEvent}
           modalPosition={modalPosition}
           setModalPosition={setModalPosition}
+          pendingEvent={pendingEvent}
+          setPendingEvent={setPendingEvent}
         />
       );
   }
