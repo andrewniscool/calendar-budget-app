@@ -1,22 +1,27 @@
-import React from "react";
+import React, { useState } from "react";
 import dayjs from "dayjs";
+import EventModal from "../EventModal";
 
 function MonthView({
   setViewMode,
   setSelectedDate,
-  setIsEventModalOpen,
-  setEditingEvent,
-  setPendingEvent,
-  setModalPosition,
-  pendingEvent
+  onSaveEvent, // passed from Calendar.jsx
+  onDeleteEvent,
+  categories,
+  selectedDate
 }) {
-  const currentMonth = dayjs(); // Can be a prop later
+  const currentMonth = dayjs(selectedDate); // Can be a prop later
   const startOfMonth = currentMonth.startOf("month");
   const daysInMonth = currentMonth.daysInMonth();
   const startDay = startOfMonth.day();
 
   const prevMonth = currentMonth.subtract(1, "month");
   const nextMonth = currentMonth.add(1, "month");
+
+  const [pendingEvent, setPendingEvent] = useState(null);
+  const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
 
   const days = [];
 
@@ -46,6 +51,46 @@ function MonthView({
     });
   }
 
+  const handleDayCellClick = (e, entry) => {
+    e.stopPropagation();
+    setEditingEvent(null);
+
+    const dateStr = entry.date.format("YYYY-MM-DD");
+    setPendingEvent({
+      title: "",
+      date: dateStr,
+      timeStart: "00:00",
+      timeEnd: "01:00",
+      category: "",
+      budget: 0,
+    });
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const modalWidth = 300;
+    const modalHeight = 500;
+    const padding = 8;
+
+    let left = rect.left + rect.width + padding;
+    let top = rect.top + rect.height / 2 - modalHeight / 2;
+
+    if (left + modalWidth > window.innerWidth) {
+      left = rect.left - modalWidth - padding;
+    }
+    if (top + modalHeight > window.innerHeight) {
+      top = window.innerHeight - modalHeight - padding;
+    }
+
+    const headerOffset = document.querySelector("header")?.offsetHeight || 0;
+    top = Math.max(padding + headerOffset, top);
+
+    setModalPosition({
+      top: top + window.scrollY,
+      left: left + window.scrollX,
+    });
+
+    setIsEventModalOpen(true);
+  };
+
   return (
     <div className="p-4">
       <div className="grid grid-cols-7 gap-1 text-center text-gray-500 mb-1 text-sm">
@@ -55,6 +100,7 @@ function MonthView({
           </div>
         ))}
       </div>
+
       <div className="grid grid-cols-7 grid-rows-5 w-full h-[calc(100vh-140px)]">
         {days.map((entry, index) => {
           const isToday = entry.date.isSame(dayjs(), "day");
@@ -64,28 +110,10 @@ function MonthView({
           return (
             <div
               key={index}
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsEventModalOpen(true);
-                setEditingEvent(null);
-                setPendingEvent({
-                  title: "",
-                  date: entry.date.format("YYYY-MM-DD"),
-                  timeStart: "00:00",
-                  timeEnd: "01:00",
-                  category: "",
-                });
-                const rect = e.currentTarget.getBoundingClientRect();
-                const coords = {
-                  x: rect.left + rect.width / 2,
-                  y: rect.top + rect.height / 2,
-                };
-                setModalPosition(coords);
-              }}
+              onClick={(e) => handleDayCellClick(e, entry)}
               className={`border border-gray-200 relative text-xs p-1 cursor-pointer flex items-start justify-center ${
                 entry.isCurrentMonth ? "text-gray-800" : "text-gray-400"
-                }`}
-
+              }`}
             >
               {/* Number Button */}
               <button
@@ -118,6 +146,25 @@ function MonthView({
           );
         })}
       </div>
+
+      {/* Event Modal */}
+      <EventModal
+        isOpen={isEventModalOpen}
+        setIsOpen={setIsEventModalOpen}
+        onSave={async (eventData) => {
+          await onSaveEvent(eventData); // Call parent to handle backend
+          setIsEventModalOpen(false);
+          setPendingEvent(null);
+        }}
+        onDelete={onDeleteEvent}
+        editingEvent={editingEvent}
+        categories={categories}
+        selectedDate={pendingEvent?.date}
+        selectedHour={0}
+        modalPosition={modalPosition}
+        setModalPosition={setModalPosition}
+        setPendingEvent={setPendingEvent}
+      />
     </div>
   );
 }
