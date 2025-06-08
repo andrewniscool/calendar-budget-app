@@ -7,7 +7,7 @@ const Header = ({ viewMode, setViewMode }) => {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-white">Budget Calendar</h1>
 
-        <div className="relative z-[9999]">
+        <div className="">
           <ViewModeDropdown viewMode={viewMode} setViewMode={setViewMode} />
         </div>
       </div>

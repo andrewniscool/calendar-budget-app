@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState, useRef, useLayoutEffect } from "react";
 import dayjs from "dayjs";
-import EventModal from "./EventModal";
+import EventModal from "../EventModal";
 
 function getStartOfWeek(date) {
   const start = new Date(date);
@@ -67,10 +67,11 @@ function WeekView({
   onSaveEvent,
   onDeleteEvent,
   modalPosition,
-  setModalPosition
+  setModalPosition,
+  pendingEvent,
+  setPendingEvent
 }) {
-  const today = new Date();
-  const startOfWeek = getStartOfWeek(today);
+  const startOfWeek = getStartOfWeek(new Date(selectedDate));
   const weekDates = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(startOfWeek);
     d.setDate(d.getDate() + i);
@@ -81,7 +82,6 @@ function WeekView({
   const [calendarRect, setCalendarRect] = useState(null);
   const [currentTime, setCurrentTime] = useState(dayjs());
   const [rowHeight, setRowHeight] = useState(56);
-  const [pendingEvent, setPendingEvent] = useState(null);
   const eventModalRef = useRef();
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState(null);
@@ -179,7 +179,7 @@ function WeekView({
 
   window.addEventListener("mouseup", handleMouseUp);
   return () => window.removeEventListener("mouseup", handleMouseUp);
-}, [isDragging, dragStart, dragEnd, setSelectedDate, setSelectedHour, setEditingEvent, setModalPosition, setIsEventModalOpen]);
+}, [isDragging, dragStart, dragEnd, setPendingEvent, setSelectedDate, setSelectedHour, setEditingEvent, setModalPosition, setIsEventModalOpen]);
 
   function handleTimeCellClick(day, hour) {
     const dateStr = day.toISOString().split("T")[0];

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import dayjs from "dayjs";
-import EventModal from "./EventModal";
+import EventModal from "../EventModal";
 
 function getMinutes(timeStr) {
   if (!timeStr || !timeStr.includes(":")) return 0;
@@ -38,11 +38,12 @@ function DayView({
   onDeleteEvent,
   modalPosition,
   setModalPosition,
+  pendingEvent,
+  setPendingEvent
 }) {
   const today = selectedDate ? dayjs(selectedDate).toDate() : new Date();
   const redLineContainerRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(dayjs());
-  const [pendingEvent, setPendingEvent] = useState(null);
   const hours = Array.from({ length: 24 }, (_, hour) => hour);
   const rowHeight = 56;
 

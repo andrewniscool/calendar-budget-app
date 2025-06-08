@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import "./ViewModeDropdown.css";
+import "../styles/ViewModeDropdown.css"; // Ensure you have the correct path to your CSS
 
 function ViewModeDropdown({ viewMode, setViewMode }) {
   const [open, setOpen] = useState(false);
@@ -41,7 +41,7 @@ function ViewModeDropdown({ viewMode, setViewMode }) {
 
       {/* Dropdown options */}
       <div className="options">
-        {["all", "day", "week", "month", "year"].map((mode, idx) => (
+        {["day", "week", "month", "year"].map((mode, idx) => (
           <div key={mode}>
             <input
               type="radio"
