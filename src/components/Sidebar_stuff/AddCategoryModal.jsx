@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import ColorPickerPanel from "./ColorPickerPanel"; // import here
 
 function AddCategoryModal({
   isOpen,
@@ -68,8 +69,9 @@ function AddCategoryModal({
           <div
             className="flex transition-transform duration-500 ease-in-out"
             style={{
-              width: "200%", 
-              transform: view === "main" ? "translateX(0%)" : "translateX(-54%)",
+              width: "200%",
+              transform:
+                view === "main" ? "translateX(0%)" : "translateX(-52%)",
             }}
           >
             {/* MAIN FORM VIEW */}
@@ -173,44 +175,27 @@ function AddCategoryModal({
               </form>
             </div>
 
-            {/* SPACE BETWEEN VIEWS */}
-            <div className = "shrink-0 px-5 sm:px-4 space-y-4"></div>
+            <div className="w-5/10 shrink-0 px-5 space-y-4"></div>
 
             {/* COLOR PICKER VIEW */}
-            <div className="w-1/2 shrink-0 px-5 sm:px-4 space-y-4">
-              <h2 className="text-lg font-semibold mb-2">Pick a Color</h2>
-              <input
-                type="color"
-                className="w-full h-16 cursor-pointer"
-                value={pendingColor || "#ffffff"}
-                onChange={(e) => setPendingColor(e.target.value)}
-              />
-
-              <div className="flex justify-between pt-4">
-                <button
-                  className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm"
-                  onClick={() => setView("main")}
-                >
-                  Back
-                </button>
-                <button
-                  className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 text-sm"
-                  onClick={() => {
-                    if (
-                      pendingColor &&
-                      ![...presetColors, ...customColors].includes(pendingColor)
-                    ) {
-                      setCustomColors((prev) => [...prev, pendingColor]);
-                      setColor(pendingColor);
-                      setPendingColor("");
-                    }
-                    setView("main");
-                  }}
-                >
-                  Use Color
-                </button>
-              </div>
-            </div>
+            <ColorPickerPanel
+              presetColors={presetColors}
+              customColors={customColors}
+              pendingColor={pendingColor}
+              setPendingColor={setPendingColor}
+              onBack={() => setView("main")}
+              onUseColor={() => {
+                if (
+                  pendingColor &&
+                  ![...presetColors, ...customColors].includes(pendingColor)
+                ) {
+                  setCustomColors((prev) => [...prev, pendingColor]);
+                  setColor(pendingColor);
+                  setPendingColor("");
+                }
+                setView("main");
+              }}
+            />
           </div>
         </div>
       </div>
