@@ -5,12 +5,12 @@ import EventModal from "../EventModal";
 function MonthView({
   setViewMode,
   setSelectedDate,
-  onSaveEvent, // passed from Calendar.jsx
+  onSaveEvent,
   onDeleteEvent,
   categories,
   selectedDate
 }) {
-  const currentMonth = dayjs(selectedDate); // Can be a prop later
+  const currentMonth = dayjs(selectedDate);
   const startOfMonth = currentMonth.startOf("month");
   const daysInMonth = currentMonth.daysInMonth();
   const startDay = startOfMonth.day();
@@ -104,6 +104,7 @@ function MonthView({
       <div className="grid grid-cols-7 grid-rows-5 w-full h-[calc(100vh-140px)]">
         {days.map((entry, index) => {
           const isToday = entry.date.isSame(dayjs(), "day");
+          const isSelected = entry.date.isSame(dayjs(selectedDate), "day");
           const isPending =
             pendingEvent?.date === entry.date.format("YYYY-MM-DD");
 
@@ -115,17 +116,18 @@ function MonthView({
                 entry.isCurrentMonth ? "text-gray-800" : "text-gray-400"
               }`}
             >
-              {/* Number Button */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setSelectedDate(entry.date);
                   setViewMode("day");
                 }}
-                className={`absolute top-1 leading-tight rounded-full px-2 py-1 text-xs ${
+                className={`absolute top-1 leading-tight rounded-full px-2 py-1 text-xs transition-all duration-200 ${
                   isToday
-                    ? "bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 active:scale-[.97]"
-                    : "hover:bg-gray-100 active:scale-[.97] duration-300 ease-in-out active:bg-gray-200"
+                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                    : isSelected
+                    ? "bg-blue-100 text-blue-900 hover:bg-blue-200"
+                    : "text-gray-800 hover:bg-gray-100"
                 }`}
               >
                 {entry.date.date() === 1 ? (
@@ -138,7 +140,6 @@ function MonthView({
                 )}
               </button>
 
-              {/* Thin pending event bar */}
               {isPending && (
                 <div className="absolute bottom-1 left-2 right-2 h-1 bg-blue-500 rounded-sm"></div>
               )}
@@ -147,12 +148,11 @@ function MonthView({
         })}
       </div>
 
-      {/* Event Modal */}
       <EventModal
         isOpen={isEventModalOpen}
         setIsOpen={setIsEventModalOpen}
         onSave={async (eventData) => {
-          await onSaveEvent(eventData); // Call parent to handle backend
+          await onSaveEvent(eventData);
           setIsEventModalOpen(false);
           setPendingEvent(null);
         }}

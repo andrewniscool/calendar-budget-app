@@ -78,6 +78,7 @@ function Calendar({
       <YearView
         setSelectedDate={setSelectedDate}
         setViewMode={setViewMode}
+        selectedDate={selectedDate}
       />
     );
     default:
