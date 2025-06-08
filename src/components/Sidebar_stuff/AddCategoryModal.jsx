@@ -66,14 +66,14 @@ function AddCategoryModal({
         >
           {/* Sliding container for main and color picker views */}
           <div
-            className="flex transition-transform duration-500 ease-in-out w-[200%]"
+            className="flex transition-transform duration-500 ease-in-out"
             style={{
-              transform:
-                view === "main" ? "translateX(0%)" : "translateX(-50%)",
+              width: "200%", 
+              transform: view === "main" ? "translateX(0%)" : "translateX(-54%)",
             }}
           >
             {/* MAIN FORM VIEW */}
-            <div className="w-1/2 shrink-0 px-5 sm:px-4 space-y-4">
+            <div className="w-1/2 shrink-0 px-5 space-y-4">
               <div className="flex justify-between items-center">
                 <h2 className="text-lg font-semibold">
                   {isEditing ? "Edit Category" : "Add Category"}
@@ -172,6 +172,9 @@ function AddCategoryModal({
                 </div>
               </form>
             </div>
+
+            {/* SPACE BETWEEN VIEWS */}
+            <div className = "shrink-0 px-5 sm:px-4 space-y-4"></div>
 
             {/* COLOR PICKER VIEW */}
             <div className="w-1/2 shrink-0 px-5 sm:px-4 space-y-4">
