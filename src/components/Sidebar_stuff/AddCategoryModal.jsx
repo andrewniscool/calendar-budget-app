@@ -129,14 +129,19 @@ function AddCategoryModal({
                       />
                     ))}
 
-                    <button
-                      type="button"
-                      className="w-6 h-6 rounded-full border-2 border-dashed border-gray-400 flex items-center justify-center text-gray-600 text-base font-bold cursor-pointer hover:border-black transition-transform"
-                      title="Add custom color"
-                      onClick={() => setView("colorPicker")}
-                    >
-                      +
-                    </button>
+                    <div className="relative group">
+                      <button
+                        type="button"
+                        className="w-6 h-6 rounded-full border-2 border-dashed border-gray-400 flex items-center justify-center text-gray-600 text-base font-bold cursor-pointer hover:border-black transition-transform"
+                        onClick={() => setView("colorPicker")}
+                      >
+                        +
+                      </button>
+
+                      <span className="whitespace-nowrap absolute -top--10 left-1/2 transform -translate-x-1/2 px-5 py-1 text-xs text-white bg-black rounded opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-10">
+                        Add custom color
+                      </span>
+                    </div>
                   </div>
                 </div>
 

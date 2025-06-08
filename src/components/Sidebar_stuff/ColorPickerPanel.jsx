@@ -11,7 +11,7 @@ export default function ColorPickerPanel({
 }) {
   return (
     <div className="w-1/2 space-y-4">
-      <h2 className="text-lg font-semibold mb-2">Pick a Color</h2>
+      <h2 className="text-lg font-semibold mb-2">Choose Custom Color</h2>
 
       <div className="rounded-lg shadow-inner p-2 bg-white" style={{ height: "70%" }}>
         <HexColorPicker
@@ -45,7 +45,7 @@ export default function ColorPickerPanel({
             className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm"
             onClick={onUseColor}
           >
-            Use Color
+            Save Color
           </button>
         </div>
       </div>
