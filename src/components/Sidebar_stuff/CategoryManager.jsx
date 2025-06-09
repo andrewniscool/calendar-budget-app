@@ -4,6 +4,7 @@ import {
   fetchCategories,
   createCategory,
   deleteCategory,
+  deleteAllCategories
 } from "../../services/categoryService";
 import { HiDotsVertical } from "react-icons/hi";
 import { MdEdit, MdDelete } from "react-icons/md";
@@ -173,14 +174,20 @@ function CategoryManager({ categories, setCategories }) {
       .catch((err) => console.error("Error deleting category:", err));
   };
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (window.confirm("Clear all categories?")) {
-      setCategories([]);
-      localStorage.removeItem("categories");
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
+      try {
+        await deleteAllCategories(); // call the backend
+        setCategories([]); // clear local state
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
+      } catch (err) {
+        console.error("Failed to clear categories:", err);
+        alert("Failed to clear categories. Please try again.");
+      }
     }
   };
+
 
   return (
     <div>

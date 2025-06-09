@@ -33,3 +33,13 @@ export const deleteCategory = async (req, res) => {
   }
 };
 
+export const deleteAllCategories = async (req, res) => {
+  try {
+    await categoryModel.deleteAllCategories();
+    res.status(200).json({ message: 'All categories deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete categories' });
+  }
+};
+
