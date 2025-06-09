@@ -1,0 +1,41 @@
+.btn {
+  font-size: 16px;
+  padding: 12px 24px;
+  cursor: pointer;
+  border: none;
+  color: white;
+  user-select: none;
+  border-radius: 6px;
+  background-color: #5e18eb;
+  position: relative;
+  overflow: hidden;
+  transition: background-color 300ms ease;
+}
+
+.ripple-it::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--x, 0.5) * 100%);
+  top: calc(var(--y, 0.5) * 100%);
+  width: 20px;
+  height: 20px;
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  pointer-events: none;
+  animation: rippleExpand 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes rippleExpand {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(12);
+    opacity: 0;
+  }
+}

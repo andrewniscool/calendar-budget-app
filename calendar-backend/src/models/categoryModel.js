@@ -42,3 +42,8 @@ export const deleteCategory = async (id) => {
     throw error;
   }
 };
+
+export const deleteAllCategories = async () => {
+  const result = await db.query('DELETE FROM categories');
+  return result;
+}

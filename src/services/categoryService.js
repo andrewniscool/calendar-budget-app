@@ -14,6 +14,12 @@ export const createCategory = async (categoryData) => {
   return response.data;
 };
 
+// Delete all categories
+export const deleteAllCategories = async () => {
+  const response = await axios.delete(`${API_URL}/all`);
+  return response.data;
+};
+
 // Delete a category by ID
 export const deleteCategory = async (id) => {
   const response = await axios.delete(`${API_URL}/${id}`);

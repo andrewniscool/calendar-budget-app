@@ -5,7 +5,7 @@ import cors from 'cors';
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 import { getEvents, createEvent, updateEvent, deleteEvent } from './controllers/eventController.js';
-import { getCategories, createCategory, deleteCategory } from './controllers/categoryController.js';
+import { getCategories, createCategory, deleteCategory, deleteAllCategories } from './controllers/categoryController.js';
 
 dotenv.config({ path: '../.env' });
 
@@ -35,6 +35,7 @@ app.delete('/events/:id', deleteEvent);
 // Category routes
 app.get('/categories', getCategories);
 app.post('/categories', createCategory);
+app.delete('/categories/all', deleteAllCategories); 
 app.delete('/categories/:id', deleteCategory);
 
 // Start server
