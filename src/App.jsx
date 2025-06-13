@@ -139,7 +139,7 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col">
-      <Header viewMode={viewMode} setViewMode={setViewMode} setSelectedDate={setSelectedDate} />
+      <Header viewMode={viewMode} setViewMode={setViewMode} setSelectedDate={setSelectedDate} selectedDate={selectedDate} />
 
       <div className="flex flex-1 bg-gray-50 rounded-xl m-4 overflow-hidden shadow">
         <Sidebar
