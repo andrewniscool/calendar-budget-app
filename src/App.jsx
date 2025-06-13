@@ -1,5 +1,6 @@
 // App.jsx
 import { useState, useEffect } from "react";
+import dayjs from "dayjs";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import Calendar from "./components/Calendar";
@@ -9,7 +10,8 @@ function App() {
   const [events, setEvents] = useState([]);
   const [editingEvent, setEditingEvent] = useState(null);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
+
   const [selectedHour, setSelectedHour] = useState(null);
   const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
   const [viewMode, setViewMode] = useState("week"); // default to 'week'
@@ -137,7 +139,7 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col">
-      <Header viewMode={viewMode} setViewMode={setViewMode} />
+      <Header viewMode={viewMode} setViewMode={setViewMode} setSelectedDate={setSelectedDate} />
 
       <div className="flex flex-1 bg-gray-50 rounded-xl m-4 overflow-hidden shadow">
         <Sidebar

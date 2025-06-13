@@ -1,5 +1,4 @@
 import React from 'react'
-import dayjs from 'dayjs'
 import ViewModeDropdown from './Header_stuff/ViewModeDropdown'
 import TodayButton from './Header_stuff/TodayButton'
 
@@ -10,7 +9,7 @@ const Header = ({ viewMode, setViewMode, setSelectedDate }) => {
         <h1 className="text-2xl font-bold text-white">Budget Calendar</h1>
 
         <div className="flex justify-end p-2">
-          <TodayButton onClick={() => setSelectedDate(dayjs())}>
+          <TodayButton setSelectedDate={setSelectedDate}>
             Today
           </TodayButton>
         </div>
