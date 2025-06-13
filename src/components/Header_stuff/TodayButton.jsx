@@ -1,8 +1,8 @@
-import "../styles/TodayButton.css"; // We’ll add styles there
+import "../styles/TodayButton.css";
 import React, { useRef } from "react";
+import dayjs from "dayjs";
 
-
-function TodayButton({ onClick, children }) {
+function TodayButton({ setSelectedDate, children }) {
   const btnRef = useRef();
 
   const handleClick = (e) => {
@@ -21,7 +21,10 @@ function TodayButton({ onClick, children }) {
     // Remove ripple after animation completes
     setTimeout(() => ripple.remove(), 1200);
 
-    if (onClick) onClick(e);
+    // Set selected date to today (as dayjs object to maintain consistency)
+    const today = dayjs();
+    setSelectedDate(today);
+    console.log("Selected date set to today:", today.format("YYYY-MM-DD"));
   };
 
   return (
