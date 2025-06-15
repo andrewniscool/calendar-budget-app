@@ -1,4 +1,4 @@
-import "../styles/TodayButton.css";
+import "../styles/RippleEffect.css";
 import React, { useRef } from "react";
 import dayjs from "dayjs";
 
@@ -28,7 +28,7 @@ function TodayButton({ setSelectedDate, children }) {
   };
 
   return (
-    <button ref={btnRef} className="btn" onClick={handleClick}>
+    <button ref={btnRef} className="today-btn" onClick={handleClick}>
       {children || "Today"}
     </button>
   );

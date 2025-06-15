@@ -8,7 +8,8 @@ function MonthView({
   onSaveEvent,
   onDeleteEvent,
   categories,
-  selectedDate
+  selectedDate,
+  events
 }) {
   const currentMonth = dayjs(selectedDate);
   const startOfMonth = currentMonth.startOf("month");
@@ -25,7 +26,6 @@ function MonthView({
 
   const days = [];
 
-  // Fill in days from previous month
   const prevMonthDays = prevMonth.daysInMonth();
   for (let i = startDay - 1; i >= 0; i--) {
     days.push({
@@ -34,7 +34,6 @@ function MonthView({
     });
   }
 
-  // Fill in current month
   for (let i = 1; i <= daysInMonth; i++) {
     days.push({
       date: dayjs(currentMonth).date(i),
@@ -42,7 +41,6 @@ function MonthView({
     });
   }
 
-  // Fill in next month to make 35 cells total
   let i = 1;
   while (days.length < 35) {
     days.push({
@@ -105,40 +103,71 @@ function MonthView({
         {days.map((entry, index) => {
           const isToday = entry.date.isSame(dayjs(), "day");
           const isSelected = entry.date.isSame(dayjs(selectedDate), "day");
-          const isPending =
-            pendingEvent?.date === entry.date.format("YYYY-MM-DD");
+          const isPending = pendingEvent?.date === entry.date.format("YYYY-MM-DD");
+
+          const dayEvents = events
+            .filter(
+              (event) =>
+                dayjs(event.date).isSame(entry.date, "day") &&
+                (event.category === undefined ||
+                  categories.find((c) => c.name === event.category)?.visible !== false)
+            )
+            .slice(0, 3);
 
           return (
             <div
               key={index}
               onClick={(e) => handleDayCellClick(e, entry)}
-              className={`border border-gray-200 relative text-xs p-1 cursor-pointer flex items-start justify-center ${
+              className={`border border-gray-200 relative text-xs p-1 cursor-pointer flex flex-col justify-start items-stretch overflow-hidden ${
                 entry.isCurrentMonth ? "text-gray-800" : "text-gray-400"
               }`}
             >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedDate(entry.date);
-                  setViewMode("day");
-                }}
-                className={`absolute top-1 leading-tight rounded-full px-2 py-1 text-xs transition-all duration-200 ${
-                  isToday
-                    ? "bg-blue-600 text-white hover:bg-blue-700"
-                    : isSelected
-                    ? "bg-blue-100 text-blue-900 hover:bg-blue-200"
-                    : "text-gray-800 hover:bg-gray-100"
-                }`}
-              >
-                {entry.date.date() === 1 ? (
-                  <div className="flex flex-col items-center text-[10px] uppercase leading-3">
-                    <div>{entry.date.format("MMM")}</div>
-                    <div className="text-xs">{entry.date.date()}</div>
-                  </div>
-                ) : (
-                  entry.date.date()
-                )}
-              </button>
+              <div className="flex flex-col items-center justify-center relative w-full">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedDate(entry.date);
+                    setViewMode("day");
+                  }}
+                  className={`leading-tight rounded-full px-2 py-1 text-xs transition-all duration-200 ${
+                    isToday
+                      ? "bg-blue-600 text-white hover:bg-blue-700"
+                      : isSelected
+                      ? "bg-blue-100 text-blue-900 hover:bg-blue-200"
+                      : "text-gray-800 hover:bg-gray-100"
+                  }`}
+                >
+                  {entry.date.date() === 1 ? (
+                    <div className="flex flex-col items-center text-[10px] uppercase leading-3">
+                      <div>{entry.date.format("MMM")}</div>
+                      <div className="text-xs">{entry.date.date()}</div>
+                    </div>
+                  ) : (
+                    entry.date.date()
+                  )}
+                </button>
+
+                <div className="mt-1 w-full space-y-0.5 overflow-hidden">
+                  {dayEvents.map((event) => {
+                    const bg = categories.find((c) => c.name === event.category)?.color || "#e0e0e0";
+                    return (
+                      <div
+                        key={event.id}
+                        className="truncate text-[10px] px-1 py-0.5 rounded text-white cursor-pointer"
+                        style={{ backgroundColor: bg }}
+                        title={event.title}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingEvent(event);
+                          setIsEventModalOpen(true);
+                        }}
+                      >
+                        {event.title}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
               {isPending && (
                 <div className="absolute bottom-1 left-2 right-2 h-1 bg-blue-500 rounded-sm"></div>

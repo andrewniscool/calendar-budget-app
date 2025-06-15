@@ -1,9 +1,9 @@
 import { useState } from "react";
 import dayjs from "dayjs";
 
-function MiniCalendar({ onDateClick }) {
+function MiniCalendar({ onDateClick, selectedDate }) {
   const [currentMonth, setCurrentMonth] = useState(dayjs());
-  const [viewedDate, setViewedDate] = useState(null); 
+  const [viewedDate, setViewedDate] = useState(selectedDate);
 
 
   const goToPrevMonth = () => setCurrentMonth(prev => prev.subtract(1, "month"));

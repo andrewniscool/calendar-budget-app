@@ -4,7 +4,7 @@ import dayjs from "dayjs";
 const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function YearView({ setSelectedDate, setViewMode, selectedDate }) {
-  const year = dayjs().year();
+  const year = selectedDate ? dayjs(selectedDate).year() : dayjs().year();
   const months = Array.from({ length: 12 }, (_, i) => dayjs().month(i).year(year));
 
   const generateMonthGrid = (monthStart) => {

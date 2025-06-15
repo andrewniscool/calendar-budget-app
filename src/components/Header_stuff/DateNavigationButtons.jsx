@@ -65,9 +65,9 @@ function DateNavigationButtons({ viewMode, selectedDate, setSelectedDate }) {
         const startOfWeek = current.startOf("week");
         const endOfWeek = current.endOf("week");
         if (startOfWeek.month() === endOfWeek.month()) {
-          return `${startOfWeek.format("MMMM D")} - ${endOfWeek.format("D, YYYY")}`;
+          return `${startOfWeek.format("MMMM")} ${endOfWeek.format("YYYY")}`;
         } else {
-          return `${startOfWeek.format("MMM D")} - ${endOfWeek.format("MMM D, YYYY")}`;
+          return `${startOfWeek.format("MMM")} - ${endOfWeek.format("MMM YYYY")}`;
         }
       }
       case "month":
@@ -82,13 +82,10 @@ function DateNavigationButtons({ viewMode, selectedDate, setSelectedDate }) {
   return (
     <div className="flex items-center gap-2">
 
-    <div className="text-lg font-semibold text-gray-800 min-w-0 text-center px-2">
-        {getCurrentPeriodLabel()}
-      </div>
 
       <button
         onClick={handlePrevious}
-        className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 transition-colors duration-200"
+        className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-blue-400 transition-colors duration-200"
         aria-label="Previous"
       >
         <svg 
@@ -108,7 +105,7 @@ function DateNavigationButtons({ viewMode, selectedDate, setSelectedDate }) {
 
       <button
         onClick={handleNext}
-        className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 transition-colors duration-200"
+        className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-blue-400 transition-colors duration-300"
         aria-label="Next"
       >
         <svg 
@@ -125,6 +122,11 @@ function DateNavigationButtons({ viewMode, selectedDate, setSelectedDate }) {
           />
         </svg>
       </button>
+
+      <div className="text-lg font-semibold text-gray-800 min-w-0 text-center px-2">
+        {getCurrentPeriodLabel()}
+      </div>
+
     </div>
   );
 }
