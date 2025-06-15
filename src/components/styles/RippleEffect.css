@@ -1,4 +1,4 @@
-.btn {
+.today-btn {
   font-size: 16px;
   padding: 12px 24px;
   cursor: pointer;
@@ -10,6 +10,10 @@
   position: relative;
   overflow: hidden;
   transition: background-color 300ms ease;
+}
+.today-btn:hover {
+  background-color: #4a14b9;
+  animation-duration: 1.2s;
 }
 
 .ripple-it::before {
@@ -38,4 +42,36 @@
     transform: translate(-50%, -50%) scale(12);
     opacity: 0;
   }
+}
+
+.settings-btn {
+  font-size: 16px;
+  padding: 8px 8px;
+  cursor: pointer;
+  border: none;
+  color: #333;
+  user-select: none;
+  border-radius: 50%;
+  background-color: white;
+  position: relative;
+  overflow: hidden;
+  transition: background-color 300ms ease;
+}
+
+.settings-btn:hover {
+  background-color: #e5e5e5;
+}
+
+.settings-btn.ripple-it::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--x, 0.5) * 100%);
+  top: calc(var(--y, 0.5) * 100%);
+  width: 20px;
+  height: 20px;
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  pointer-events: none;
+  animation: rippleExpand 1.2s cubic-bezier(0.22, 1, 0.36, 1);
 }

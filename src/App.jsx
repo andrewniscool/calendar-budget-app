@@ -1,21 +1,20 @@
-// App.jsx
 import { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import Calendar from "./components/Calendar";
-import { fetchEvents, saveEvent, deleteEvent } from "./services/eventService"; // Import service
+import { fetchEvents, saveEvent, deleteEvent } from "./services/eventService";
+
 
 function App() {
   const [events, setEvents] = useState([]);
   const [editingEvent, setEditingEvent] = useState(null);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
-
   const [selectedHour, setSelectedHour] = useState(null);
   const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
-  const [viewMode, setViewMode] = useState("week"); // default to 'week'
-  
+  const [viewMode, setViewMode] = useState("week");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
 
   const [categories, setCategories] = useState(() => {
@@ -29,11 +28,18 @@ function App() {
         ];
   });
 
+  const [budgetLimits, setBudgetLimits] = useState({
+    overall: 1000,
+    Work: 300,
+    Food: 200,
+    Study: 150,
+    Uncategorized: 100,
+  });
+
   useEffect(() => {
     localStorage.setItem("categories", JSON.stringify(categories));
   }, [categories]);
 
-  // Fetch events from the backend
   useEffect(() => {
     const getEvents = async () => {
       try {
@@ -51,45 +57,34 @@ function App() {
     getEvents();
   }, []);
 
-  // Handle saving events (add or update)
   function handleSaveEvent({ title, budget, timeStart, timeEnd, category, date }) {
     if (!date) {
       alert("Error: No day selected");
       return;
     }
-
     const fallbackTitle = title.trim() === "" ? "New Event" : title;
     const parsedBudget = parseFloat(budget);
-    const roundedBudget = isNaN(parsedBudget)
-      ? 0
-      : parseFloat(parsedBudget.toFixed(2));
-
+    const roundedBudget = isNaN(parsedBudget) ? 0 : parseFloat(parsedBudget.toFixed(2));
     const eventData = {
       title: fallbackTitle,
       budget: roundedBudget,
-      timeStart: timeStart || `${selectedHour?.toString().padStart(2, "0")}:00`,
+      timeStart: timeStart ?? `${selectedHour?.toString().padStart(2, "0")}:00`,
       timeEnd:
-        timeEnd ||
-        `${(selectedHour !== null ? selectedHour + 1 : 1)
-          .toString()
-          .padStart(2, "0")}:00`,
-      category: category || "",
+        timeEnd ??
+        `${(selectedHour !== null ? selectedHour + 1 : 1).toString().padStart(2, "0")}:00`,
+      category: category ?? "",
       date: date,
     };
-    // console.log("Event data:", eventData);
 
     try {
       if (editingEvent) {
-        // Update event
         eventData.id = editingEvent.id;
         saveEvent(eventData).then((updatedEvent) => {
-
           const mappedEvent = {
             ...updatedEvent,
             timeStart: updatedEvent.time_start,
             timeEnd: updatedEvent.time_end,
           };
-
           setEvents((prev) =>
             prev.map((event) =>
               event.id === editingEvent.id ? { ...event, ...mappedEvent } : event
@@ -97,17 +92,15 @@ function App() {
           );
         });
       } else {
-        // Add new event
         saveEvent(eventData).then((newEvent) => {
-            const mappedEvent = {
-              ...newEvent,
-              timeStart: newEvent.time_start,
-              timeEnd: newEvent.time_end,
-            };
+          const mappedEvent = {
+            ...newEvent,
+            timeStart: newEvent.time_start,
+            timeEnd: newEvent.time_end,
+          };
           setEvents((prev) => [...prev, mappedEvent]);
         });
       }
-
       setEditingEvent(null);
       setIsEventModalOpen(false);
     } catch (e) {
@@ -115,7 +108,6 @@ function App() {
     }
   }
 
-  // Handle deleting an event
   function handleDeleteEvent(eventToDelete) {
     deleteEvent(eventToDelete.id)
       .then(() => {
@@ -129,28 +121,37 @@ function App() {
   function handleAddEventClick() {
     const now = new Date();
     const hour = now.getHours();
-
     setSelectedDate(now.toISOString().split("T")[0]);
     setSelectedHour(hour);
-
     setEditingEvent(null);
     setIsEventModalOpen(true);
   }
 
   return (
     <div className="h-screen flex flex-col">
-      <Header viewMode={viewMode} setViewMode={setViewMode} setSelectedDate={setSelectedDate} selectedDate={selectedDate} />
-
+      <Header
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        selectedDate={selectedDate}
+        setSelectedDate={setSelectedDate}
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+      />
       <div className="flex flex-1 bg-gray-50 rounded-xl m-4 overflow-hidden shadow">
-        <Sidebar
-          categories={categories}
-          setCategories={setCategories}
-          onAddEventClick={handleAddEventClick}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-          selectedDate={selectedDate}
-          setSelectedDate={setSelectedDate}
-        />
+        <div className={`transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-0'} overflow-hidden`}>
+          <Sidebar
+            categories={categories}
+            setCategories={setCategories}
+            onAddEventClick={handleAddEventClick}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
+            events={events}
+            budgetLimits={budgetLimits}
+            setBudgetLimits={setBudgetLimits}
+          />
+        </div>
         <main className="flex-1 h-full overflow-hidden">
           <Calendar
             viewMode={viewMode}
