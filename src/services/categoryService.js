@@ -1,27 +1,28 @@
-import axios from 'axios';
+import axios from "axios";
 
-const API_URL = 'http://localhost:3001/categories';
+const API_URL = "http://localhost:3001/categories";
 
-// Fetch all categories
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("token");
+  return { Authorization: `Bearer ${token}` };
+};
+
 export const fetchCategories = async () => {
-  const response = await axios.get(API_URL);
+  const response = await axios.get(API_URL, { headers: getAuthHeaders() });
   return response.data;
 };
 
-// Create a new category
 export const createCategory = async (categoryData) => {
-  const response = await axios.post(API_URL, categoryData);
+  const response = await axios.post(API_URL, categoryData, { headers: getAuthHeaders() });
   return response.data;
 };
 
-// Delete all categories
 export const deleteAllCategories = async () => {
-  const response = await axios.delete(`${API_URL}/all`);
+  const response = await axios.delete(`${API_URL}/all`, { headers: getAuthHeaders() });
   return response.data;
 };
 
-// Delete a category by ID
 export const deleteCategory = async (id) => {
-  const response = await axios.delete(`${API_URL}/${id}`);
+  const response = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return response.data;
 };

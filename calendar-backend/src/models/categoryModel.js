@@ -1,4 +1,3 @@
-// src/models/categoryModel.js
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 dotenv.config({ path: '../.env' });
@@ -7,9 +6,13 @@ const db = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-export const getCategories = async () => {
+// Get all categories for a specific user
+export const getCategoriesByUser = async (userId) => {
   try {
-    const result = await db.query('SELECT * FROM categories');
+    const result = await db.query(
+      'SELECT category_id, name, color FROM categories WHERE user_id = $1 ORDER BY name',
+      [userId]
+    );
     return result.rows;
   } catch (error) {
     console.error('Error fetching categories:', error);
@@ -17,11 +20,12 @@ export const getCategories = async () => {
   }
 };
 
-export const createCategory = async ({ name, color }) => {
+// Create a category for a user
+export const createCategory = async ({ userId, name, color }) => {
   try {
     const result = await db.query(
-      'INSERT INTO categories (name, color) VALUES ($1, $2) RETURNING *',
-      [name, color]
+      `INSERT INTO categories (user_id, name, color) VALUES ($1, $2, $3) RETURNING category_id, name, color`,
+      [userId, name, color]
     );
     return result.rows[0];
   } catch (error) {
@@ -30,11 +34,12 @@ export const createCategory = async ({ name, color }) => {
   }
 };
 
-export const deleteCategory = async (id) => {
+// Delete a category by ID only if it belongs to the user
+export const deleteCategory = async (categoryId, userId) => {
   try {
     const result = await db.query(
-      'DELETE FROM categories WHERE category_id = $1 RETURNING *',
-      [id]
+      `DELETE FROM categories WHERE category_id = $1 AND user_id = $2 RETURNING *`,
+      [categoryId, userId]
     );
     return result.rows[0];
   } catch (error) {
@@ -43,7 +48,15 @@ export const deleteCategory = async (id) => {
   }
 };
 
-export const deleteAllCategories = async () => {
-  const result = await db.query('DELETE FROM categories');
-  return result;
-}
+// Delete all categories for a user
+export const deleteAllCategories = async (userId) => {
+  try {
+    await db.query(
+      `DELETE FROM categories WHERE user_id = $1`,
+      [userId]
+    );
+  } catch (error) {
+    console.error('Error deleting all categories:', error);
+    throw error;
+  }
+};
