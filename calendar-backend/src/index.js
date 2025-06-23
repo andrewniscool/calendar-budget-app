@@ -6,6 +6,8 @@ import { Pool } from 'pg';
 import dotenv from 'dotenv';
 import { getEvents, createEvent, updateEvent, deleteEvent } from './controllers/eventController.js';
 import { getCategories, createCategory, deleteCategory, deleteAllCategories } from './controllers/categoryController.js';
+import { authenticate } from './middleware/authMiddleware.js';
+import { login, register } from './controllers/userController.js';
 
 dotenv.config({ path: '../.env' });
 
@@ -27,16 +29,20 @@ app.get('/', (req, res) => {
 });
 
 // Event routes
-app.get('/events', getEvents);
-app.post('/events', createEvent);
-app.put('/events/:id', updateEvent);
-app.delete('/events/:id', deleteEvent);
+app.get('/events', authenticate, getEvents);
+app.post('/events', authenticate, createEvent);
+app.put('/events/:id', authenticate, updateEvent);
+app.delete('/events/:id', authenticate, deleteEvent);
 
 // Category routes
-app.get('/categories', getCategories);
-app.post('/categories', createCategory);
-app.delete('/categories/all', deleteAllCategories); 
-app.delete('/categories/:id', deleteCategory);
+app.get('/categories', authenticate, getCategories);
+app.post('/categories', authenticate, createCategory);
+app.delete('/categories/all', authenticate, deleteAllCategories); 
+app.delete('/categories/:id', authenticate, deleteCategory);
+
+// Authentication middleware
+app.post('/login', login); 
+app.post('/register', register);
 
 // Start server
 app.listen(port, () => {
