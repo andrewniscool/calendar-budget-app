@@ -67,7 +67,8 @@ function WeekView({
   modalPosition,
   setModalPosition,
   pendingEvent,
-  setPendingEvent
+  setPendingEvent,
+  calendarId
 }) {
   const startOfWeek = getStartOfWeek(new Date(selectedDate));
   const weekDates = Array.from({ length: 7 }, (_, i) => {
@@ -80,7 +81,6 @@ function WeekView({
   const [calendarRect, setCalendarRect] = useState(null);
   const [currentTime, setCurrentTime] = useState(dayjs());
   const [rowHeight, setRowHeight] = useState(56);
-  const eventModalRef = useRef();
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState(null);
   const [dragEnd, setDragEnd] = useState(null);
@@ -374,7 +374,7 @@ useEffect(() => {
         modalPosition={modalPosition}
         setModalPosition={setModalPosition}
         setPendingEvent={setPendingEvent}
-        ref={eventModalRef}
+        calendarId={calendarId}
       />
     </div>
   );

@@ -96,6 +96,7 @@ const EventModal = forwardRef(function EventModal({
 
   function handleSubmit(e) {
     e.preventDefault();
+    // Changed categoryId back to category to match MainApp.jsx
     onSave({ title, date, budget, timeStart, timeEnd, category });
     setIsOpen(false);
   }
@@ -196,8 +197,8 @@ const EventModal = forwardRef(function EventModal({
                   onChange={(e) => setCategory(e.target.value)}
                 >
                   <option value="">Select a category</option>
-                  {categories.map((cat, i) => (
-                    <option key={i} value={cat.name}>
+                  {categories.map((cat) => (
+                    <option key={cat.category_id} value={cat.category_id}>
                       {cat.name}
                     </option>
                   ))}

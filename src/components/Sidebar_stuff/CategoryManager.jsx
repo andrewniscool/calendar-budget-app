@@ -1,4 +1,4 @@
-// ✅ Full CategoryManager with Add & Edit modal support (using 3-dot menu)
+// ✅ Fixed CategoryManager with proper calendarId handling
 import { useEffect, useState } from "react";
 import {
   fetchCategories,
@@ -117,20 +117,24 @@ function CategoryDropdown({ categories, onAddClick, handleDeleteCategory, toggle
   );
 }
 
-function CategoryManager({ categories, setCategories }) {
+function CategoryManager({ categories, setCategories, calendarId }) {
   const [error, setError] = useState("");
   const [showToast, setShowToast] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
 
   useEffect(() => {
-    fetchCategories()
-      .then((data) => {
-        const mapped = data.map((cat) => ({ ...cat, visible: true }));
-        setCategories(mapped);
-      })
-      .catch((err) => console.error("Error fetching categories:", err));
-  }, [setCategories]);
+    console.log('calendarId before fetchCategories:', calendarId);
+
+    if (calendarId) {
+      fetchCategories(calendarId)
+        .then((data) => {
+          const mapped = data.map((cat) => ({ ...cat, visible: true }));
+          setCategories(mapped);
+        })
+        .catch((err) => console.error("Error fetching categories:", err));
+    }
+  }, [calendarId, setCategories]);
 
   const toggleVisibility = (index) => {
     const updated = [...categories];
@@ -149,6 +153,7 @@ function CategoryManager({ categories, setCategories }) {
     );
     if (nameExists) return setError("Category name already exists.");
 
+    // If editing existing category
     if (categoryData.category_id) {
       const updatedList = categories.map((cat) =>
         cat.category_id === categoryData.category_id ? { ...cat, ...categoryData } : cat
@@ -159,13 +164,21 @@ function CategoryManager({ categories, setCategories }) {
       return;
     }
 
-    createCategory({ name: trimmedName, color: categoryData.color })
+    // Creating new category - include calendarId
+    createCategory({ 
+      name: trimmedName, 
+      color: categoryData.color,
+      calendarId: calendarId 
+    })
       .then((created) => {
         setCategories((prev) => [...prev, { ...created, visible: true }]);
         setError("");
         setIsModalOpen(false);
       })
-      .catch(() => setError("Failed to create category."));
+      .catch((err) => {
+        console.error("Error creating category:", err);
+        setError("Failed to create category.");
+      });
   };
 
   const handleDeleteCategory = (id) => {
@@ -177,7 +190,7 @@ function CategoryManager({ categories, setCategories }) {
   const handleClearAll = async () => {
     if (window.confirm("Clear all categories?")) {
       try {
-        await deleteAllCategories(); // call the backend
+        await deleteAllCategories(calendarId); // pass calendarId
         setCategories([]); // clear local state
         setShowToast(true);
         setTimeout(() => setShowToast(false), 3000);
@@ -188,11 +201,15 @@ function CategoryManager({ categories, setCategories }) {
     }
   };
 
+  // Don't render if no calendarId
+  if (!calendarId) {
+    return <div>Loading categories...</div>;
+  }
 
   return (
     <div>
       <CategoryDropdown
-        categories={categories}
+        categories={categories || []}
         handleDeleteCategory={handleDeleteCategory}
         toggleVisibility={toggleVisibility}
         onAddClick={() => {
