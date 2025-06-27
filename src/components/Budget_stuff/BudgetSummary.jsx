@@ -91,14 +91,13 @@ const BudgetSummary = ({ events, categories, selectedDate, viewMode }) => {
       {/* Total Spending */}
       <div className="mb-4 p-3 bg-gray-50 rounded-lg">
         <div className="flex justify-between items-center">
-          <span className="text-gray-600">Total Spending</span>
+          <span className="text-gray-600 text-sm font-bold">Total Spending:</span>
+          <span className="text-sm text-gray-500 mt-1">{budgetData.eventCount} events</span>
+        </div>
           <span className="text-2xl font-bold text-gray-800">
             ${budgetData.totalSpending.toFixed(2)}
           </span>
-        </div>
-        <div className="text-sm text-gray-500 mt-1">
-          {budgetData.eventCount} events
-        </div>
+
       </div>
 
       {/* Category Breakdown */}

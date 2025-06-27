@@ -1,21 +1,15 @@
-import { Pool } from 'pg';
-import dotenv from 'dotenv';
-dotenv.config({ path: '../.env' });
+import { db } from '../index.js'; // Added missing import
 
-const db = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-// Get all events for a user, joined with category info
-export const getEvents = async (userID) => {
+export const getEvents = async (calendarId, userId) => {
   try {
     const result = await db.query(
       `SELECT e.*, c.name AS category_name, c.color AS category_color
        FROM events e
        LEFT JOIN categories c ON e.category_id = c.category_id
-       WHERE e.user_id = $1
+       JOIN calendars cal ON e.calendar_id = cal.calendar_id
+       WHERE cal.calendar_id = $1 AND cal.user_id = $2
        ORDER BY e.date, e.time_start`,
-      [userID]
+      [calendarId, userId]
     );
     return result.rows;
   } catch (error) {
@@ -24,14 +18,19 @@ export const getEvents = async (userID) => {
   }
 };
 
-// Create event with category_id
-export const createEvent = async ({ title, date, timeStart, timeEnd, categoryId, budget }, userID) => {
+export const createEvent = async ({ title, date, timeStart, timeEnd, categoryId, budget, calendarId }, userId) => {
   try {
+    const check = await db.query(
+      `SELECT * FROM calendars WHERE calendar_id = $1 AND user_id = $2`,
+      [calendarId, userId]
+    );
+    if (check.rowCount === 0) throw new Error('Unauthorized calendar access');
+
     const result = await db.query(
-      `INSERT INTO events (title, date, time_start, time_end, category_id, budget, user_id)
+      `INSERT INTO events (title, date, time_start, time_end, category_id, budget, calendar_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [title, date, timeStart, timeEnd, categoryId, budget, userID]
+      [title, date, timeStart, timeEnd, categoryId, budget, calendarId]
     );
     return result.rows[0];
   } catch (error) {
@@ -40,15 +39,16 @@ export const createEvent = async ({ title, date, timeStart, timeEnd, categoryId,
   }
 };
 
-// Update event, including category_id
-export const updateEvent = async (id, userID, { title, date, timeStart, timeEnd, categoryId, budget }) => {
+export const updateEvent = async (id, userId, { title, date, timeStart, timeEnd, categoryId, budget }) => {
   try {
     const result = await db.query(
       `UPDATE events
        SET title = $1, date = $2, time_start = $3, time_end = $4, category_id = $5, budget = $6
-       WHERE id = $7 AND user_id = $8
+       WHERE id = $7 AND calendar_id IN (
+         SELECT calendar_id FROM calendars WHERE user_id = $8
+       )
        RETURNING *`,
-      [title, date, timeStart, timeEnd, categoryId, budget, id, userID]
+      [title, date, timeStart, timeEnd, categoryId, budget, id, userId]
     );
     return result.rows[0];
   } catch (error) {
@@ -57,12 +57,15 @@ export const updateEvent = async (id, userID, { title, date, timeStart, timeEnd,
   }
 };
 
-// Delete event for a user
-export const deleteEvent = async (id, userID) => {
+export const deleteEvent = async (id, userId) => {
   try {
     const result = await db.query(
-      'DELETE FROM events WHERE id = $1 AND user_id = $2 RETURNING *',
-      [id, userID]
+      `DELETE FROM events
+       WHERE id = $1 AND calendar_id IN (
+         SELECT calendar_id FROM calendars WHERE user_id = $2
+       )
+       RETURNING *`,
+      [id, userId]
     );
     return result.rows[0];
   } catch (error) {

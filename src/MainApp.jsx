@@ -5,7 +5,7 @@ import Sidebar from "./components/Sidebar";
 import Calendar from "./components/Calendar";
 import { fetchEvents, saveEvent, deleteEvent } from "./services/eventService";
 
-function MainApp( ) {
+function MainApp( { calendarId } ) {
   // Your existing app code goes here exactly as you posted
   // (All your state, handlers, JSX, etc.)
   
@@ -19,11 +19,7 @@ function MainApp( ) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // remove localStorage for categories, since you said you use backend now:
-  const [categories, setCategories] = useState([
-    { name: "Work", color: "#CB7876", visible: true },
-    { name: "Food", color: "#B4CFA4", visible: true },
-    { name: "Study", color: "#8BA47C", visible: true },
-  ]);
+  const [categories, setCategories] = useState([  ]);
 
   const [budgetLimits, setBudgetLimits] = useState({
     overall: 1000,
@@ -36,7 +32,9 @@ function MainApp( ) {
   useEffect(() => {
     const getEvents = async () => {
       try {
-        const data = await fetchEvents();
+        console.log('calendarId before fetchEvents:', calendarId);
+
+        const data = await fetchEvents(calendarId);
         const mappedEvents = data.map((event) => ({
           ...event,
           timeStart: event.time_start,
@@ -48,7 +46,7 @@ function MainApp( ) {
       }
     };
     getEvents();
-  }, []);
+  }, [calendarId]);
 
   function handleSaveEvent({ title, budget, timeStart, timeEnd, category, date }) {
     if (!date) {
@@ -66,6 +64,7 @@ function MainApp( ) {
         timeEnd ?? `${(selectedHour !== null ? selectedHour + 1 : 1).toString().padStart(2, "0")}:00`,
       category: category ?? "",
       date: date,
+      calendarId: calendarId, // Pass the calendarId to the event data
     };
 
     try {
@@ -132,6 +131,7 @@ function MainApp( ) {
       <div className="flex flex-1 bg-gray-50 rounded-xl m-4 overflow-hidden shadow">
         <div className={`transition-all duration-300 ${isSidebarOpen ? "w-64" : "w-0"} overflow-hidden`}>
           <Sidebar
+            calendarId = {calendarId}
             categories={categories}
             setCategories={setCategories}
             onAddEventClick={handleAddEventClick}
