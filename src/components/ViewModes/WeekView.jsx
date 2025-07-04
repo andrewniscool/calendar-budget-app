@@ -216,34 +216,37 @@ useEffect(() => {
     setDragStart(null);
     setDragEnd(null);
 
-    setTimeout(() => {
-      const previewEl = document.querySelector('[data-event-id="preview"]');
-      if (!previewEl) return;
+setTimeout(() => {
+  const previewEl = document.querySelector('[data-event-id="preview"]');
+  if (!previewEl) return;
 
-      const rect = previewEl.getBoundingClientRect();
-      const modalWidth = 300;
-      const modalHeight = 500;
+  const rect = previewEl.getBoundingClientRect();
+  const modalWidth = 300;
+  const modalHeight = 500;
 
-      let top = rect.top + window.scrollY;
-      let left = rect.right + window.scrollX + 8;
+  let top = rect.top + window.scrollY;
+  let left = rect.right + window.scrollX + 8;
 
-      if (left + modalWidth > window.innerWidth) {
-        left = rect.left - modalWidth - 8 + window.scrollX;
-      }
+  // Shift left if right edge overflows window
+  if (left + modalWidth > window.innerWidth) {
+    left = rect.left - modalWidth - 8 + window.scrollX;
+  }
 
-      const maxTop = document.documentElement.scrollHeight - modalHeight - 16;
-      if (top > maxTop) {
-        top = maxTop;
-      }
+  // Clamp top so modal does not overflow viewport bottom
+  const maxTop = window.scrollY + window.innerHeight - modalHeight - 200;
+  if (top > maxTop) {
+    top = maxTop;
+  }
 
-      setModalPosition({ top, left });
-      setIsEventModalOpen(true);
-    }, 0);
+  setModalPosition({ top, left });
+  setIsEventModalOpen(true);
+}, 0);
   }
 
   function handleEventClick(event) {
     setEditingEvent(event);
     setIsEventModalOpen(true);
+    setPendingEvent(false);
   }
 
   return (
