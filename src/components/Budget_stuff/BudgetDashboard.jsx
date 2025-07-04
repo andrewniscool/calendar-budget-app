@@ -17,7 +17,7 @@ const BudgetDashboard = ({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     overall: true,
-    categories: true,
+    categories: false,
     summary: true
   });
 
@@ -102,10 +102,10 @@ const BudgetDashboard = ({
       <div>
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          className="w-full flex items-center justify-between py-2 px-0 hover:bg-gray-50 transition-colors"
+          className="w-full flex items-center justify-between py-2 px-0 hover:bg-gray-50 transition-colors rounded-lg"
         >
           <div className="flex items-center gap-3">
-            <h1 className="text-[18px] font-bold text-gray-800">Budget Overview</h1>
+            <h1 className="text-[18px] font-bold text-gray-800 p-1">Budget Overview</h1>
             {!sidebarCollapsed && overallStatus.status !== 'good' && overallStatus.status !== 'none' && (
               <div className="flex items-center gap-1">
                 {getStatusIcon(overallStatus.status)}

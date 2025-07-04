@@ -2,6 +2,9 @@ import React from 'react'
 import ViewModeDropdown from './Header_stuff/ViewModeDropdown'
 import TodayButton from './Header_stuff/TodayButton'
 import DateNavigationButtons from './Header_stuff/DateNavigationButtons'
+import { CgProfile } from "react-icons/cg";
+import ProfilePopupMenu from './Header_stuff/ProfilePopupMenu';
+
 
 const Header = ({ viewMode, setViewMode, setSelectedDate, selectedDate, setIsSidebarOpen }) => {
   return (
@@ -36,6 +39,12 @@ const Header = ({ viewMode, setViewMode, setSelectedDate, selectedDate, setIsSid
         <div justify-right className="ml-auto flex items-center">
           <ViewModeDropdown viewMode={viewMode} setViewMode={setViewMode} />
         </div>
+
+        <div className="pr-4" title="Profile">
+          {/* <CgProfile /> */}
+          <ProfilePopupMenu />
+        </div>
+
       </div>
     </header>
   )

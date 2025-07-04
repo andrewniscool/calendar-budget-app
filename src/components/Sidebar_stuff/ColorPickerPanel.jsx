@@ -2,8 +2,6 @@ import React from "react";
 import { HexColorPicker } from "react-colorful";
 
 export default function ColorPickerPanel({
-  presetColors,
-  customColors,
   pendingColor,
   setPendingColor,
   onBack,
