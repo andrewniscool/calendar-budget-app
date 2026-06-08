@@ -1,5 +1,11 @@
 import jwt from 'jsonwebtoken';
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+
+function getJwtSecret() {
+    if (!process.env.JWT_SECRET) {
+        throw new Error('JWT_SECRET is required');
+    }
+    return process.env.JWT_SECRET;
+}
 
 export function authenticate(req, res, next){
     const authHeader = req.headers['authorization'];
@@ -9,7 +15,7 @@ export function authenticate(req, res, next){
         return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    jwt.verify(token, JWT_SECRET, (err, payload) => {
+    jwt.verify(token, getJwtSecret(), (err, payload) => {
         if (err) {
             return res.status(403).json({ message: 'Forbidden' });
         }

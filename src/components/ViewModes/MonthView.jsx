@@ -23,6 +23,8 @@ function MonthView({
   const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
+  const getCategoryForEvent = (event) =>
+    categories.find((item) => item.category_id === event.categoryId);
 
   const days = [];
 
@@ -54,14 +56,14 @@ function MonthView({
     setEditingEvent(null);
 
     const dateStr = entry.date.format("YYYY-MM-DD");
-    setPendingEvent({
-      title: "",
-      date: dateStr,
-      timeStart: "00:00",
-      timeEnd: "01:00",
-      category: "",
-      budget: 0,
-    });
+      setPendingEvent({
+        title: "",
+        date: dateStr,
+        timeStart: "00:00",
+        timeEnd: "01:00",
+        categoryId: "",
+        budget: 0,
+      });
 
     const rect = e.currentTarget.getBoundingClientRect();
     const modalWidth = 300;
@@ -109,8 +111,7 @@ function MonthView({
             .filter(
               (event) =>
                 dayjs(event.date).isSame(entry.date, "day") &&
-                (event.category === undefined ||
-                  categories.find((c) => c.name === event.category)?.visible !== false)
+                getCategoryForEvent(event)?.visible !== false
             )
             .slice(0, 3);
 
@@ -149,7 +150,7 @@ function MonthView({
 
                 <div className="mt-1 w-full space-y-0.5 overflow-hidden">
                   {dayEvents.map((event) => {
-                    const bg = categories.find((c) => c.name === event.category)?.color || "#e0e0e0";
+                    const bg = event.categoryColor || getCategoryForEvent(event)?.color || "#e0e0e0";
                     return (
                       <div
                         key={event.id}

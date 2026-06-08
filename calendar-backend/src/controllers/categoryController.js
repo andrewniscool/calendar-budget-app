@@ -43,6 +43,40 @@ export const createCategory = async (req, res) => {
   }
 };
 
+export const updateCategory = async (req, res) => {
+  const { id } = req.params;
+  const { name, color, calendarId } = req.body;
+  const userId = req.user.id;
+
+  if (!id) {
+    return res.status(400).json({ error: 'Category ID is required' });
+  }
+  if (!name || !calendarId) {
+    return res.status(400).json({ error: 'Name and calendarId are required' });
+  }
+
+  try {
+    const updatedCategory = await categoryModel.updateCategory(id, {
+      name,
+      color,
+      calendarId,
+      userId,
+    });
+
+    if (!updatedCategory) {
+      return res.status(404).json({ error: 'Category not found or unauthorized' });
+    }
+
+    res.json(updatedCategory);
+  } catch (err) {
+    console.error('Update category error:', err);
+    if (err.message === 'Unauthorized calendar access') {
+      return res.status(403).json({ error: 'Unauthorized calendar access' });
+    }
+    res.status(500).json({ error: 'Failed to update category' });
+  }
+};
+
 // Delete one category by ID (only if it belongs to a calendar owned by the user)
 export const deleteCategory = async (req, res) => {
   const { id } = req.params;

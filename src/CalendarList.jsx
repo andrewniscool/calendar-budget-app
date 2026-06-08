@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { fetchCalendars, createCalendar, deleteCalendar } from './services/calendarService';
 import MainApp from './MainApp';
 
-function CalendarList() {
+function CalendarList({ onLogout }) {
   const [calendars, setCalendars] = useState([]);
   const [newName, setNewName] = useState('');
   const [selectedCalendar, setSelectedCalendar] = useState(null);
@@ -33,7 +33,7 @@ function CalendarList() {
   } 
     
   if(selectedCalendar) {
-    return <MainApp calendarId={selectedCalendar.calendar_id} />;
+    return <MainApp calendarId={selectedCalendar.calendar_id} onLogout={onLogout} />;
   }
   
   return (

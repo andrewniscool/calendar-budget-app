@@ -42,6 +42,28 @@ export const createCategory = async (categoryData) => {
   }
 };
 
+export const updateCategory = async (id, categoryData) => {
+  if (!id) {
+    throw new Error("Category ID is required to update a category");
+  }
+  if (!categoryData.calendarId) {
+    throw new Error("calendarId is required when updating a category");
+  }
+  if (!categoryData.name) {
+    throw new Error("name is required when updating a category");
+  }
+
+  try {
+    const response = await axios.put(`${API_URL}/${id}`, categoryData, {
+      headers: getAuthHeaders(),
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error updating category:", error);
+    throw new Error(error.response?.data?.error || "Failed to update category");
+  }
+};
+
 export const deleteAllCategories = async (calendarId) => {
   if (!calendarId) {
     throw new Error("calendarId is required to delete all categories");

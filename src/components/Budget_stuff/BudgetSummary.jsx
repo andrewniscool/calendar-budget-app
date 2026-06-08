@@ -30,13 +30,13 @@ const BudgetSummary = ({ events, categories, selectedDate, viewMode }) => {
 
     filteredEvents.forEach(event => {
       const budget = parseFloat(event.budget) || 0;
-      const category = event.category || 'Uncategorized';
+      const category = event.categoryName || 'Uncategorized';
       
       if (!categoryTotals[category]) {
         categoryTotals[category] = {
           total: 0,
           events: [],
-          color: categories.find(c => c.name === category)?.color || '#e0e0e0'
+          color: event.categoryColor || categories.find(c => c.name === category)?.color || '#e0e0e0'
         };
       }
       

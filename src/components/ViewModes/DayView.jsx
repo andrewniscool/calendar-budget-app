@@ -41,6 +41,9 @@ function DayView({
   pendingEvent,
   setPendingEvent
 }) {
+  const getCategoryForEvent = (event) =>
+    categories.find((item) => item.category_id === event.categoryId);
+
   const today = selectedDate ? dayjs(selectedDate).toDate() : new Date();
   const redLineContainerRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(dayjs());
@@ -70,7 +73,7 @@ function DayView({
       timeStart: `${hour.toString().padStart(2, "0")}:00`,
       timeEnd: `${(hour + 1).toString().padStart(2, "0")}:00`,
       date: dateStr,
-      category: undefined,
+      categoryId: "",
       budget: 0,
     };
 
@@ -129,15 +132,14 @@ function DayView({
                       dayjs(event.date).isSame(dayjs(today), "day") &&
                       getMinutes(event.timeStart) >= hour * 60 &&
                       getMinutes(event.timeStart) < (hour + 1) * 60 &&
-                      (event.category === undefined ||
-                        categories.find((c) => c.name === event.category)?.visible !== false)
+                      getCategoryForEvent(event)?.visible !== false
                   )
                   .map((event) => {
                     const start = getMinutes(event.timeStart);
                     const end = getMinutes(event.timeEnd);
                     const top = ((start - hour * 60) / 60) * 100;
                     const height = ((end - start) / 60) * 100;
-                    const bg = categories.find((c) => c.name === event.category)?.color || "#e0e0e0";
+                    const bg = event.categoryColor || getCategoryForEvent(event)?.color || "#e0e0e0";
 
                     return (
                       <div

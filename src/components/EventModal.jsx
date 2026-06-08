@@ -21,7 +21,7 @@ const EventModal = forwardRef(function EventModal({
   const [budget, setBudget] = useState("");
   const [timeStart, setTimeStart] = useState("");
   const [timeEnd, setTimeEnd] = useState("");
-  const [category, setCategory] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState(editingEvent?.date || new Date().toISOString().split("T")[0]);
 
   useImperativeHandle(ref, () => ({
@@ -65,7 +65,7 @@ const EventModal = forwardRef(function EventModal({
         setBudget(editingEvent.budget || "");
         setTimeStart(editingEvent.timeStart || "");
         setTimeEnd(editingEvent.timeEnd || "");
-        setCategory(editingEvent.category || "");
+        setCategoryId(String(editingEvent.categoryId || ""));
       } else {
         const defaultDate = selectedDate || new Date().toISOString().split("T")[0];
         const now = new Date();
@@ -83,7 +83,7 @@ const EventModal = forwardRef(function EventModal({
         setBudget("");
         setTimeStart(start);
         setTimeEnd(end);
-        setCategory("");
+        setCategoryId("");
       }
     }
   }, [isOpen, editingEvent, selectedHour, selectedDate]);
@@ -96,7 +96,7 @@ const EventModal = forwardRef(function EventModal({
 
   function handleSubmit(e) {
     e.preventDefault();
-    onSave({ title, date, budget, timeStart, timeEnd, category });
+    onSave({ title, date, budget, timeStart, timeEnd, categoryId });
     setIsOpen(false);
   }
 
@@ -273,8 +273,8 @@ const EventModal = forwardRef(function EventModal({
                 </label>
                 <select
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-700 group-hover:border-gray-400 appearance-none bg-white"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
                   required
                 >
                   <option value="">Select a category...</option>

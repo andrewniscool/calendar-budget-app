@@ -33,7 +33,7 @@ const BudgetDashboard = ({
 
     monthEvents.forEach(event => {
       const budget = parseFloat(event.budget) || 0;
-      const category = event.category || 'Uncategorized';
+      const category = event.categoryName || 'Uncategorized';
       
       if (!categorySpending[category]) {
         categorySpending[category] = 0;

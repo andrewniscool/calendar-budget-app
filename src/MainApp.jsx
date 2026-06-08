@@ -5,10 +5,18 @@ import Sidebar from "./components/Sidebar";
 import Calendar from "./components/Calendar";
 import { fetchEvents, saveEvent, deleteEvent } from "./services/eventService";
 
-function MainApp( { calendarId } ) {
-  // Your existing app code goes here exactly as you posted
-  // (All your state, handlers, JSX, etc.)
-  
+function mapEventFromApi(event) {
+  return {
+    ...event,
+    timeStart: event.timeStart ?? event.time_start,
+    timeEnd: event.timeEnd ?? event.time_end,
+    categoryId: event.categoryId ?? event.category_id ?? "",
+    categoryName: event.categoryName ?? event.category_name ?? event.category ?? "Uncategorized",
+    categoryColor: event.categoryColor ?? event.category_color ?? "",
+  };
+}
+
+function MainApp({ calendarId, onLogout }) {
   const [events, setEvents] = useState([]);
   const [editingEvent, setEditingEvent] = useState(null);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
@@ -18,7 +26,6 @@ function MainApp( { calendarId } ) {
   const [viewMode, setViewMode] = useState("week");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // remove localStorage for categories, since you said you use backend now:
   const [categories, setCategories] = useState([  ]);
 
   const [budgetLimits, setBudgetLimits] = useState({
@@ -32,14 +39,8 @@ function MainApp( { calendarId } ) {
   useEffect(() => {
     const getEvents = async () => {
       try {
-        console.log('calendarId before fetchEvents:', calendarId);
-
         const data = await fetchEvents(calendarId);
-        const mappedEvents = data.map((event) => ({
-          ...event,
-          timeStart: event.time_start,
-          timeEnd: event.time_end,
-        }));
+        const mappedEvents = data.map(mapEventFromApi);
         setEvents(mappedEvents);
       } catch (err) {
         console.error("Error fetching events:", err);
@@ -48,7 +49,7 @@ function MainApp( { calendarId } ) {
     getEvents();
   }, [calendarId]);
 
-  function handleSaveEvent({ title, budget, timeStart, timeEnd, category, date }) {
+  async function handleSaveEvent({ title, budget, timeStart, timeEnd, categoryId, date }) {
     if (!date) {
       alert("Error: No day selected");
       return;
@@ -62,35 +63,25 @@ function MainApp( { calendarId } ) {
       timeStart: timeStart ?? `${selectedHour?.toString().padStart(2, "0")}:00`,
       timeEnd:
         timeEnd ?? `${(selectedHour !== null ? selectedHour + 1 : 1).toString().padStart(2, "0")}:00`,
-      category: category ?? "",
-      date: date,
-      calendarId: calendarId, // Pass the calendarId to the event data
+      categoryId: categoryId || null,
+      date,
+      calendarId,
     };
 
     try {
       if (editingEvent) {
         eventData.id = editingEvent.id;
-        saveEvent(eventData).then((updatedEvent) => {
-          const mappedEvent = {
-            ...updatedEvent,
-            timeStart: updatedEvent.time_start,
-            timeEnd: updatedEvent.time_end,
-          };
-          setEvents((prev) =>
-            prev.map((event) =>
-              event.id === editingEvent.id ? { ...event, ...mappedEvent } : event
-            )
-          );
-        });
+        const updatedEvent = await saveEvent(eventData);
+        const mappedEvent = mapEventFromApi(updatedEvent);
+        setEvents((prev) =>
+          prev.map((event) =>
+            event.id === editingEvent.id ? { ...event, ...mappedEvent } : event
+          )
+        );
       } else {
-        saveEvent(eventData).then((newEvent) => {
-          const mappedEvent = {
-            ...newEvent,
-            timeStart: newEvent.time_start,
-            timeEnd: newEvent.time_end,
-          };
-          setEvents((prev) => [...prev, mappedEvent]);
-        });
+        const newEvent = await saveEvent(eventData);
+        const mappedEvent = mapEventFromApi(newEvent);
+        setEvents((prev) => [...prev, mappedEvent]);
       }
       setEditingEvent(null);
       setIsEventModalOpen(false);
@@ -127,6 +118,7 @@ function MainApp( { calendarId } ) {
         setSelectedDate={setSelectedDate}
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
+        onLogout={onLogout}
       />
       <div className="flex flex-1 bg-gray-50 rounded-xl m-4 overflow-hidden shadow">
         <div className={`transition-all duration-300 ${isSidebarOpen ? "w-64" : "w-0"} overflow-hidden`}>
@@ -150,7 +142,6 @@ function MainApp( { calendarId } ) {
             setViewMode={setViewMode}
             categories={categories}
             events={events}
-            setEvents={setEvents}
             editingEvent={editingEvent}
             setEditingEvent={setEditingEvent}
             isEventModalOpen={isEventModalOpen}

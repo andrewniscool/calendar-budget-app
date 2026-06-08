@@ -1,0 +1,23 @@
+services:
+  db:
+    image: postgres:16
+    container_name: calendar-budget-db
+    restart: unless-stopped
+    env_file:
+      - ./calendar-backend/.env
+    environment:
+      POSTGRES_USER: calendar_user
+      POSTGRES_DB: calendar_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./calendar-backend/sql/create_tables.sql:/docker-entrypoint-initdb.d/01-create_tables.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U calendar_user -d calendar_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:

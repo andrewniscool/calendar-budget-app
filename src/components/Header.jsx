@@ -2,11 +2,10 @@ import React from 'react'
 import ViewModeDropdown from './Header_stuff/ViewModeDropdown'
 import TodayButton from './Header_stuff/TodayButton'
 import DateNavigationButtons from './Header_stuff/DateNavigationButtons'
-import { CgProfile } from "react-icons/cg";
 import ProfilePopupMenu from './Header_stuff/ProfilePopupMenu';
 
 
-const Header = ({ viewMode, setViewMode, setSelectedDate, selectedDate, setIsSidebarOpen }) => {
+const Header = ({ viewMode, setViewMode, setSelectedDate, selectedDate, setIsSidebarOpen, onLogout }) => {
   return (
     <header className="bg-sky-400 shadow-md p-4 sticky top-0 z-[50] overflow-visible">
       <div className="flex gap-10">
@@ -41,8 +40,7 @@ const Header = ({ viewMode, setViewMode, setSelectedDate, selectedDate, setIsSid
         </div>
 
         <div className="pr-4" title="Profile">
-          {/* <CgProfile /> */}
-          <ProfilePopupMenu />
+          <ProfilePopupMenu onLogout={onLogout} />
         </div>
 
       </div>

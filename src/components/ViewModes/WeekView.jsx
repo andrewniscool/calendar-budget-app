@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, useRef, useLayoutEffect } from "react";
+import { Fragment, useEffect, useState, useRef, useLayoutEffect, useCallback } from "react";
 import dayjs from "dayjs";
 import EventModal from "../EventModal";
 
@@ -70,6 +70,9 @@ function WeekView({
   setPendingEvent,
   calendarId
 }) {
+  const getCategoryForEvent = (event) =>
+    categories.find((item) => item.category_id === event.categoryId);
+
   const startOfWeek = getStartOfWeek(new Date(selectedDate));
   const weekDates = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(startOfWeek);
@@ -97,30 +100,29 @@ function WeekView({
   }, []);
 
 
-// Move updateRedLinePosition outside so it's accessible in both hooks
-function updateRedLinePosition() {
-  const rects = redLineContainerRef.current?.querySelectorAll(".day-column") ?? [];
-  const todayIndex = weekDates.findIndex((d) => dayjs(d).isSame(dayjs(), "day"));
-  if (rects[todayIndex]) {
-    const cell = rects[todayIndex].getBoundingClientRect();
-    const parent = redLineContainerRef.current.getBoundingClientRect();
-    const newRect = {
-      left: cell.left - parent.left,
-      width: cell.width,
-    };
-    setCalendarRect((prev) =>
-      !prev || prev.left !== newRect.left || prev.width !== newRect.width
-        ? newRect
-        : prev 
-    );
-  }
-}
+  const updateRedLinePosition = useCallback(() => {
+    const rects = redLineContainerRef.current?.querySelectorAll(".day-column") ?? [];
+    const todayIndex = weekDates.findIndex((d) => dayjs(d).isSame(dayjs(), "day"));
+    if (rects[todayIndex]) {
+      const cell = rects[todayIndex].getBoundingClientRect();
+      const parent = redLineContainerRef.current.getBoundingClientRect();
+      const newRect = {
+        left: cell.left - parent.left,
+        width: cell.width,
+      };
+      setCalendarRect((prev) =>
+        !prev || prev.left !== newRect.left || prev.width !== newRect.width
+          ? newRect
+          : prev
+      );
+    }
+  }, [weekDates]);
 
 useEffect(() => {
   updateRedLinePosition(); // initial call
   window.addEventListener("resize", updateRedLinePosition);
   return () => window.removeEventListener("resize", updateRedLinePosition);
-}, [weekDates]);
+}, [updateRedLinePosition]);
 
 useEffect(() => {
   if (!redLineContainerRef.current) return;
@@ -132,7 +134,7 @@ useEffect(() => {
   observer.observe(redLineContainerRef.current);
 
   return () => observer.disconnect();
-}, [weekDates]);
+}, [updateRedLinePosition]);
 
 
 
@@ -155,7 +157,7 @@ useEffect(() => {
         timeStart: `${startHour.toString().padStart(2, "0")}:00`,
         timeEnd: `${endHour.toString().padStart(2, "0")}:00`,
         date: dragStart.day.toISOString().split("T")[0],
-        category: undefined,
+        categoryId: "",
         budget: 0,
       };
 
@@ -205,7 +207,7 @@ useEffect(() => {
       timeStart: `${hour.toString().padStart(2, "0")}:00`,
       timeEnd: `${(hour + 1).toString().padStart(2, "0")}:00`,
       date: dateStr,
-      category: undefined,
+      categoryId: "",
       budget: 0,
     };
 
@@ -289,15 +291,14 @@ setTimeout(() => {
                         dayjs(event.date).isSame(day, "day") &&
                         getMinutes(event.timeStart) >= hour * 60 &&
                         getMinutes(event.timeStart) < (hour + 1) * 60 &&
-                        (event.category === undefined ||
-                          categories.find((c) => c.name === event.category)?.visible !== false)
+                        getCategoryForEvent(event)?.visible !== false
                     )
                     .map((event) => {
                       const startMinutes = getMinutes(event.timeStart);
                       const endMinutes = getMinutes(event.timeEnd);
                       const top = ((startMinutes - hour * 60) / 60) * 100;
                       const height = ((endMinutes - startMinutes) / 60) * 100;
-                      const bg = categories.find((c) => c.name === event.category)?.color || "#e0e0e0";
+                      const bg = event.categoryColor || getCategoryForEvent(event)?.color || "#e0e0e0";
                       return (
                         <div
                           key={event.id}

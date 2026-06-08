@@ -39,6 +39,28 @@ export const createCategory = async ({ name, color, calendarId, userId }) => {
   }
 };
 
+export const updateCategory = async (categoryId, { name, color, calendarId, userId }) => {
+  try {
+    const check = await db.query(
+      `SELECT * FROM calendars WHERE calendar_id = $1 AND user_id = $2`,
+      [calendarId, userId]
+    );
+    if (check.rowCount === 0) throw new Error('Unauthorized calendar access');
+
+    const result = await db.query(
+      `UPDATE categories
+       SET name = $1, color = $2
+       WHERE category_id = $3 AND calendar_id = $4
+       RETURNING category_id, name, color`,
+      [name, color, categoryId, calendarId]
+    );
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error updating category:', error);
+    throw error;
+  }
+};
+
 export const deleteCategory = async (categoryId, userId) => {
   try {
     const result = await db.query(

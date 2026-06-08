@@ -1,12 +1,12 @@
 -- Users Table
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   password TEXT NOT NULL
 );
 
 -- Calendars Table (each user can have multiple)
-CREATE TABLE calendars (
+CREATE TABLE IF NOT EXISTS calendars (
   calendar_id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE calendars (
 );
 
 -- Categories Table (linked to a calendar)
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
   category_id SERIAL PRIMARY KEY,
   calendar_id INTEGER REFERENCES calendars(calendar_id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -23,7 +23,7 @@ CREATE TABLE categories (
 );
 
 -- Events Table (linked to a calendar and optionally a category)
-CREATE TABLE events (
+CREATE TABLE IF NOT EXISTS events (
   id SERIAL PRIMARY KEY,
   calendar_id INTEGER REFERENCES calendars(calendar_id) ON DELETE CASCADE,
   category_id INTEGER REFERENCES categories(category_id) ON DELETE SET NULL,

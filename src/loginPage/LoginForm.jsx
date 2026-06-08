@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { loginUser } from "../services/userService";
 
 function LoginForm({ onLoginSuccess, onShowSignUp }) {
   const [username, setUsername] = useState("");
@@ -11,22 +12,10 @@ function LoginForm({ onLoginSuccess, onShowSignUp }) {
     setLoading(true);
     setMessage("");
     try {
-      const res = await fetch("http://localhost:3001/login", {  // Use 3001 here
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        localStorage.setItem("token", data.token);
-        onLoginSuccess();
-      } else {
-        setMessage(data.message || "Login failed");
-      }
-    } catch {
-      setMessage("Network error");
+      await loginUser(username, password);
+      onLoginSuccess();
+    } catch (error) {
+      setMessage(error.response?.data?.message || "Login failed");
     }
     setLoading(false);
   };
@@ -54,10 +43,9 @@ function LoginForm({ onLoginSuccess, onShowSignUp }) {
         {loading ? "Logging in..." : "Login"}
       </button>
       {message && <p style={{ color: "red" }}>{message}</p>}
-            <button type="button" onClick={onShowSignUp} style={{ marginTop: 10 }}>
+      <button type="button" onClick={onShowSignUp} style={{ marginTop: 10 }}>
         Don't have an account? Sign Up
       </button>
-      
     </form>
   );
 }

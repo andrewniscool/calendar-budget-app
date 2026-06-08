@@ -1,12 +1,100 @@
-# React + Vite
+# Calendar Budget App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This repo contains:
 
-Currently, two official plugins are available:
+- A Vite React frontend
+- An Express backend in `calendar-backend`
+- A Postgres database defined in `docker-compose.yml`
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Prereqs
 
-## Expanding the ESLint configuration
+- Node 18+
+- npm
+- Docker Desktop or Docker Engine with `docker compose`
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## First-time setup
+
+1. Install frontend dependencies:
+
+```bash
+npm install
+```
+
+2. Install backend dependencies:
+
+```bash
+cd calendar-backend
+npm install
+cd ..
+```
+
+3. Create the backend env file:
+
+```bash
+cp calendar-backend/.env.example calendar-backend/.env
+```
+
+Set `POSTGRES_PASSWORD` to a local development password, then use that same
+password in `DATABASE_URL`. For example:
+
+```dotenv
+POSTGRES_PASSWORD=your-local-password
+DATABASE_URL=postgres://calendar_user:your-local-password@localhost:5432/calendar_db
+```
+
+4. Start Postgres from the repo:
+
+```bash
+npm run db:up
+```
+
+This creates:
+
+- database: `calendar_db`
+- user: `calendar_user`
+- password: the `POSTGRES_PASSWORD` value in `calendar-backend/.env`
+
+The tables are initialized automatically from `calendar-backend/sql/create_tables.sql`.
+
+## Running the app
+
+Start the backend:
+
+```bash
+npm run dev:backend
+```
+
+Start the frontend in another terminal:
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:5173`.
+
+## Database commands
+
+Start the database:
+
+```bash
+npm run db:up
+```
+
+Stop containers:
+
+```bash
+npm run db:down
+```
+
+Reset the database completely:
+
+```bash
+npm run db:reset
+```
+
+`db:reset` removes the Docker volume, recreates the database, and reruns the SQL init file.
+
+## Notes
+
+- The backend connects to `localhost:5432`, which matches the Compose port mapping.
+- If you move to another device, the DB setup now lives in the repo. You only need Docker plus the normal `npm install` steps.

@@ -1,16 +1,20 @@
-/* eslint-env node */
-
 import express from 'express';
 import cors from 'cors';
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 import { getEvents, createEvent, updateEvent, deleteEvent } from './controllers/eventController.js';
-import { getCategories, createCategory, deleteCategory, deleteAllCategories } from './controllers/categoryController.js';
+import { getCategories, createCategory, updateCategory, deleteCategory, deleteAllCategories } from './controllers/categoryController.js';
 import { authenticate } from './middleware/authMiddleware.js';
 import { login, register } from './controllers/userController.js';
 import { getCalendars, createCalendar, deleteCalendar } from './controllers/calendarController.js';
 
-dotenv.config({ path: '../.env' });
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 console.log("Starting server...");
 const app = express();
@@ -67,6 +71,7 @@ app.delete('/events/:id', authenticate, deleteEvent);
 // Category routes
 app.get('/categories', authenticate, getCategories);
 app.post('/categories', authenticate, createCategory);
+app.put('/categories/:id', authenticate, updateCategory);
 app.delete('/categories/all', authenticate, deleteAllCategories); 
 app.delete('/categories/:id', authenticate, deleteCategory);
 
@@ -76,7 +81,7 @@ app.post('/calendars', authenticate, createCalendar);
 app.delete('/calendars/:id', authenticate, deleteCalendar);
 
 // Error handling
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error('Error:', err);
   res.status(500).json({ error: err.message });
 });

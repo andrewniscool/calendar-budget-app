@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   fetchCategories,
   createCategory,
+  updateCategory,
   deleteCategory,
   deleteAllCategories
 } from "../../services/categoryService";
@@ -124,8 +125,6 @@ function CategoryManager({ categories, setCategories, calendarId }) {
   const [editingCategory, setEditingCategory] = useState(null);
 
   useEffect(() => {
-    console.log('calendarId before fetchCategories:', calendarId);
-
     if (calendarId) {
       fetchCategories(calendarId)
         .then((data) => {
@@ -155,12 +154,26 @@ function CategoryManager({ categories, setCategories, calendarId }) {
 
     // If editing existing category
     if (categoryData.category_id) {
-      const updatedList = categories.map((cat) =>
-        cat.category_id === categoryData.category_id ? { ...cat, ...categoryData } : cat
-      );
-      setCategories(updatedList);
-      setIsModalOpen(false);
-      setEditingCategory(null);
+      updateCategory(categoryData.category_id, {
+        name: trimmedName,
+        color: categoryData.color,
+        calendarId,
+      })
+        .then((updatedCategory) => {
+          const updatedList = categories.map((cat) =>
+            cat.category_id === categoryData.category_id
+              ? { ...cat, ...updatedCategory, visible: cat.visible }
+              : cat
+          );
+          setCategories(updatedList);
+          setError("");
+          setIsModalOpen(false);
+          setEditingCategory(null);
+        })
+        .catch((err) => {
+          console.error("Error updating category:", err);
+          setError("Failed to update category.");
+        });
       return;
     }
 
