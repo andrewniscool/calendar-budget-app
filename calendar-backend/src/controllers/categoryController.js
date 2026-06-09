@@ -1,119 +1,23 @@
-import * as categoryModel from '../models/categoryModel.js';
+export function createCategoryController(categoryService) {
+  return {
+    async list(req, res) {
+      res.json(await categoryService.list(req.user.id, req.query.calendarId));
+    },
 
-export const getCategories = async (req, res) => {
-  const userId = req.user.id;
-  const { calendarId } = req.query;
-  
-  if (!calendarId) {
-    return res.status(400).json({ error: 'calendarId is required' });
-  }
-  
-  try {
-    const categories = await categoryModel.getCategoriesByCalendar(calendarId, userId);
-    res.json(categories);
-  } catch (err) {
-    console.error('Get categories error:', err);
-    res.status(500).json({ error: 'Failed to fetch categories' });
-  }
-};
+    async create(req, res) {
+      res.status(201).json(await categoryService.create(req.user.id, req.body));
+    },
 
-// Create category under a calendar
-export const createCategory = async (req, res) => {
-  const { name, color, calendarId } = req.body;
-  const userId = req.user.id;
-  
-  if (!name || !calendarId) {
-    return res.status(400).json({ error: 'Name and calendarId are required' });
-  }
-  
-  try {
-    const newCategory = await categoryModel.createCategory({ 
-      name, 
-      color, 
-      calendarId, 
-      userId // Fixed parameter order
-    });
-    res.status(201).json(newCategory);
-  } catch (err) {
-    console.error('Create category error:', err);
-    if (err.message === 'Unauthorized calendar access') {
-      return res.status(403).json({ error: 'Unauthorized calendar access' });
-    }
-    res.status(500).json({ error: 'Failed to create category' });
-  }
-};
+    async update(req, res) {
+      res.json(await categoryService.update(req.user.id, req.params.id, req.body));
+    },
 
-export const updateCategory = async (req, res) => {
-  const { id } = req.params;
-  const { name, color, calendarId } = req.body;
-  const userId = req.user.id;
+    async remove(req, res) {
+      res.json(await categoryService.remove(req.user.id, req.params.id));
+    },
 
-  if (!id) {
-    return res.status(400).json({ error: 'Category ID is required' });
-  }
-  if (!name || !calendarId) {
-    return res.status(400).json({ error: 'Name and calendarId are required' });
-  }
-
-  try {
-    const updatedCategory = await categoryModel.updateCategory(id, {
-      name,
-      color,
-      calendarId,
-      userId,
-    });
-
-    if (!updatedCategory) {
-      return res.status(404).json({ error: 'Category not found or unauthorized' });
-    }
-
-    res.json(updatedCategory);
-  } catch (err) {
-    console.error('Update category error:', err);
-    if (err.message === 'Unauthorized calendar access') {
-      return res.status(403).json({ error: 'Unauthorized calendar access' });
-    }
-    res.status(500).json({ error: 'Failed to update category' });
-  }
-};
-
-// Delete one category by ID (only if it belongs to a calendar owned by the user)
-export const deleteCategory = async (req, res) => {
-  const { id } = req.params;
-  const userId = req.user.id;
-  
-  if (!id) {
-    return res.status(400).json({ error: 'Category ID is required' });
-  }
-  
-  try {
-    const deletedCategory = await categoryModel.deleteCategory(id, userId);
-    
-    if (!deletedCategory) {
-      return res.status(404).json({ error: 'Category not found or unauthorized' });
-    }
-    
-    res.json(deletedCategory);
-  } catch (err) {
-    console.error('Delete category error:', err);
-    res.status(500).json({ error: 'Failed to delete category' });
-  }
-};
-
-// Delete all categories in a calendar
-export const deleteAllCategories = async (req, res) => {
-  const { calendarId } = req.query;
-  const userId = req.user.id;
-  
-  if (!calendarId) {
-    return res.status(400).json({ error: 'calendarId is required' });
-  }
-  
-  try {
-    await categoryModel.deleteAllCategories(calendarId, userId);
-    res.status(200).json({ message: 'All categories deleted' });
-  } catch (err) {
-    console.error('Delete all categories error:', err);
-    res.status(500).json({ error: 'Failed to delete categories' });
-  }
-};
+    async removeAll(req, res) {
+      res.json(await categoryService.removeAll(req.user.id, req.query.calendarId));
+    },
+  };
+}

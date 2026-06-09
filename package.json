@@ -3,10 +3,14 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "db:up": "docker compose up -d db",
-    "db:down": "docker compose down",
-    "db:reset": "docker compose down -v && docker compose up -d db",
+    "db:up": "docker compose --env-file calendar-backend/.env up -d --wait db && npm --prefix calendar-backend run migrate:up",
+    "db:down": "docker compose --env-file calendar-backend/.env down",
+    "db:reset": "docker compose --env-file calendar-backend/.env down -v && docker compose --env-file calendar-backend/.env up -d --wait db && npm --prefix calendar-backend run migrate:up",
+    "test:backend": "npm --prefix calendar-backend test",
     "dev": "vite",
     "dev:backend": "npm --prefix calendar-backend start",
     "build": "vite build",

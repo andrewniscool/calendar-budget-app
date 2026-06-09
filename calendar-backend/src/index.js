@@ -1,93 +1,38 @@
-import express from 'express';
-import cors from 'cors';
-import { Pool } from 'pg';
-import dotenv from 'dotenv';
-import { getEvents, createEvent, updateEvent, deleteEvent } from './controllers/eventController.js';
-import { getCategories, createCategory, updateCategory, deleteCategory, deleteAllCategories } from './controllers/categoryController.js';
-import { authenticate } from './middleware/authMiddleware.js';
-import { login, register } from './controllers/userController.js';
-import { getCalendars, createCalendar, deleteCalendar } from './controllers/calendarController.js';
+import { createApp } from './app.js';
+import { getConfig, loadEnv } from './config.js';
+import { createPool, verifyDatabase } from './db.js';
 
-import path from 'path';
-import { fileURLToPath } from 'url';
+loadEnv();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const config = getConfig();
+const db = createPool(config.DATABASE_URL);
+let server;
+let shuttingDown = false;
 
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`Received ${signal}; shutting down`);
 
-console.log("Starting server...");
-const app = express();
-const port = process.env.PORT || 3001;
-
-// CORS configuration
-const corsOptions = {
-  origin: ['http://localhost:3001', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://127.0.0.1:3001'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 200
-};
-
-app.use(cors(corsOptions));
-app.use(express.json());
-
-// Request logging
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path} - Origin: ${req.headers.origin}`);
-  next();
-});
-
-// Connect to Postgres
-export const db = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-// Test database connection
-db.connect((err, client, release) => {
-  if (err) {
-    console.error('Error connecting to database:', err);
-  } else {
-    console.log('✅ Connected to database');
-    release();
+  if (server) {
+    await new Promise((resolve) => server.close(resolve));
   }
-});
+  await db.end();
+}
 
-// Health check
-app.get('/', (req, res) => {
-  res.send("🚀 Calendar API is running!");
-});
+async function start() {
+  await verifyDatabase(db);
+  const app = createApp({ db, config });
+  server = app.listen(config.PORT, () => {
+    console.log(`Calendar API listening on http://localhost:${config.PORT}`);
+  });
+}
 
-// Authentication routes (no auth required)
-app.post('/login', login); 
-app.post('/register', register);
+process.on('SIGINT', () => shutdown('SIGINT').finally(() => process.exit(0)));
+process.on('SIGTERM', () => shutdown('SIGTERM').finally(() => process.exit(0)));
 
-// Event routes
-app.get('/events', authenticate, getEvents);
-app.post('/events', authenticate, createEvent);
-app.put('/events/:id', authenticate, updateEvent);
-app.delete('/events/:id', authenticate, deleteEvent);
-
-// Category routes
-app.get('/categories', authenticate, getCategories);
-app.post('/categories', authenticate, createCategory);
-app.put('/categories/:id', authenticate, updateCategory);
-app.delete('/categories/all', authenticate, deleteAllCategories); 
-app.delete('/categories/:id', authenticate, deleteCategory);
-
-// Calendar routes
-app.get('/calendars', authenticate, getCalendars);
-app.post('/calendars', authenticate, createCalendar); 
-app.delete('/calendars/:id', authenticate, deleteCalendar);
-
-// Error handling
-app.use((err, req, res, _next) => {
-  console.error('Error:', err);
-  res.status(500).json({ error: err.message });
-});
-
-// Start server
-app.listen(port, () => {
-  console.log(`Server is listening on http://localhost:${port}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+start().catch(async (error) => {
+  console.error('Failed to start API:', error);
+  await db.end();
+  process.exit(1);
 });

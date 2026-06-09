@@ -1,11 +1,21 @@
 {
   "name": "calendar-backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/index.js",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "node --watch src/index.js",
+    "migrate:up": "node --env-file=.env ./node_modules/node-pg-migrate/bin/node-pg-migrate.js up --migrations-dir migrations",
+    "migrate:down": "node --env-file=.env ./node_modules/node-pg-migrate/bin/node-pg-migrate.js down --migrations-dir migrations",
+    "migrate:test": "TEST_DATABASE_URL=postgres://calendar_test_user:calendar_test_password@127.0.0.1:5433/calendar_test_db node ./node_modules/node-pg-migrate/bin/node-pg-migrate.js up --migrations-dir migrations --database-url-var TEST_DATABASE_URL",
+    "pretest": "docker compose -f docker-compose.test.yml up -d --wait && npm run migrate:test",
+    "test": "vitest run",
+    "posttest": "docker compose -f docker-compose.test.yml down -v",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",
@@ -15,8 +25,16 @@
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
-    "express": "^5.1.0",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
-    "pg": "^8.16.0"
+    "pg": "^8.16.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "node-pg-migrate": "^8.0.4",
+    "supertest": "^7.2.2",
+    "vitest": "^4.1.8"
   }
 }

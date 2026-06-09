@@ -1,28 +1,21 @@
 import jwt from 'jsonwebtoken';
+import { unauthorized } from '../errors.js';
 
-function getJwtSecret() {
-    if (!process.env.JWT_SECRET) {
-        throw new Error('JWT_SECRET is required');
+export function createAuthenticate(config) {
+  return (req, _res, next) => {
+    const match = req.get('authorization')?.match(/^Bearer ([^\s]+)$/);
+    if (!match) return next(unauthorized());
+
+    try {
+      const payload = jwt.verify(match[1], config.JWT_SECRET, {
+        algorithms: ['HS256'],
+        issuer: 'calendar-budget-api',
+        audience: 'calendar-budget-web',
+      });
+      req.user = { id: payload.id, username: payload.username };
+      next();
+    } catch {
+      next(unauthorized('Invalid or expired token'));
     }
-    return process.env.JWT_SECRET;
-}
-
-export function authenticate(req, res, next){
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-        return res.status(401).json({ message: 'Unauthorized' });
-    }
-
-    jwt.verify(token, getJwtSecret(), (err, payload) => {
-        if (err) {
-            return res.status(403).json({ message: 'Forbidden' });
-        }
-        req.user = {
-            id: payload.id,
-            username: payload.username,
-        };
-        next();
-    });
+  };
 }

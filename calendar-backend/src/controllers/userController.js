@@ -1,43 +1,13 @@
-// controllers/userController.js
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import { findUserByUsername, createUser } from '../models/userModel.js';
+export function createUserController(authService) {
+  return {
+    async register(req, res) {
+      const user = await authService.register(req.body);
+      res.status(201).json(user);
+    },
 
-function getJwtSecret() {
-  if (!process.env.JWT_SECRET) {
-    throw new Error('JWT_SECRET is required');
-  }
-  return process.env.JWT_SECRET;
-}
-
-// Register
-export async function register(req, res) {
-  const { username, password } = req.body;
-  try {
-    const existing = await findUserByUsername(username);
-    if (existing) return res.status(400).json({ message: 'Username already exists' });
-
-    const hashed = await bcrypt.hash(password, 10);
-    const user = await createUser(username, hashed);
-    res.status(201).json(user);
-  } catch (err) {
-    res.status(500).json({ message: 'Registration failed', error: err.message });
-  }
-}
-
-// Login
-export async function login(req, res) {
-  const { username, password } = req.body;
-  try {
-    const user = await findUserByUsername(username);
-    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
-
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) return res.status(401).json({ message: 'Invalid credentials' });
-
-    const token = jwt.sign({ id: user.id, username: user.username }, getJwtSecret(), { expiresIn: '1h' });
-    res.json({ token, username: user.username });
-  } catch (err) {
-    res.status(500).json({ message: 'Login failed', error: err.message });
-  }
+    async login(req, res) {
+      const session = await authService.login(req.body);
+      res.json(session);
+    },
+  };
 }

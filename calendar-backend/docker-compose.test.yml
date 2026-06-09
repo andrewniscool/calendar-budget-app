@@ -1,0 +1,16 @@
+services:
+  db-test:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: calendar_test_user
+      POSTGRES_PASSWORD: calendar_test_password
+      POSTGRES_DB: calendar_test_db
+    ports:
+      - "127.0.0.1:5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U calendar_test_user -d calendar_test_db"]
+      interval: 2s
+      timeout: 5s
+      retries: 15

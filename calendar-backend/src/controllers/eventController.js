@@ -1,85 +1,19 @@
-import * as eventModel from '../models/eventModel.js'; // Added missing import
+export function createEventController(eventService) {
+  return {
+    async list(req, res) {
+      res.json(await eventService.list(req.user.id, req.query.calendarId));
+    },
 
-// Get all events in a calendar
-export const getEvents = async (req, res) => {
-  const { calendarId } = req.query;
-  try {
-    const events = await eventModel.getEvents(calendarId, req.user.id);
-    res.json(events);
-  } catch (err) {
-    console.error('Get events error:', err);
-    res.status(500).json({ error: 'Failed to fetch events' });
-  }
-};
+    async create(req, res) {
+      res.status(201).json(await eventService.create(req.user.id, req.body));
+    },
 
-// Create a new event in a calendar
-export const createEvent = async (req, res) => {
-  console.log('Creating event with body:', req.body);
-  const { title, date, timeStart, timeEnd, categoryId, budget, calendarId } = req.body;
-  
-  // Input validation
-  if (!title || !date || !calendarId) {
-    return res.status(400).json({ error: 'Title, date, and calendarId are required' });
-  }
-  
-  try {
-    const newEvent = await eventModel.createEvent(
-      { title, date, timeStart, timeEnd, categoryId, budget, calendarId },
-      req.user.id
-    );
-    res.status(201).json(newEvent);
-  } catch (err) {
-    console.error('Create event error:', err);
-    res.status(500).json({ error: 'Failed to create event' });
-  }
-};
+    async update(req, res) {
+      res.json(await eventService.update(req.user.id, req.params.id, req.body));
+    },
 
-// Update event
-export const updateEvent = async (req, res) => {
-  const { id } = req.params;
-  const { title, date, timeStart, timeEnd, categoryId, budget } = req.body;
-  
-  if (!id) {
-    return res.status(400).json({ error: 'Event ID is required' });
-  }
-  
-  try {
-    const updatedEvent = await eventModel.updateEvent(
-      id,
-      req.user.id,
-      { title, date, timeStart, timeEnd, categoryId, budget }
-    );
-    
-    if (!updatedEvent) {
-      return res.status(404).json({ error: 'Event not found or unauthorized' });
-    }
-    
-    res.json(updatedEvent);
-  } catch (err) {
-    console.error('Update event error:', err);
-    res.status(500).json({ error: 'Failed to update event' });
-  }
-};
-
-// Delete event
-export const deleteEvent = async (req, res) => {
-  const { id } = req.params;
-  
-  if (!id) {
-    return res.status(400).json({ error: 'Event ID is required' });
-  }
-  
-  try {
-    const deletedEvent = await eventModel.deleteEvent(id, req.user.id);
-    
-    if (!deletedEvent) {
-      return res.status(404).json({ error: 'Event not found or unauthorized' });
-    }
-    
-    res.json(deletedEvent);
-  } catch (err) {
-    console.error('Delete event error:', err);
-    res.status(500).json({ error: 'Failed to delete event' });
-  }
-};
-
+    async remove(req, res) {
+      res.json(await eventService.remove(req.user.id, req.params.id));
+    },
+  };
+}
