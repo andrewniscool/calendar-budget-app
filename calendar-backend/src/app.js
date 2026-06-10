@@ -15,15 +15,20 @@ import { createCalendarController } from './controllers/calendarController.js';
 import { createCategoryController } from './controllers/categoryController.js';
 import { createEventController } from './controllers/eventController.js';
 import { createAuthenticate } from './middleware/authMiddleware.js';
+import { createCsrfProtection } from './middleware/authMiddleware.js';
+import { createMailService } from './services/mailService.js';
 import { asyncHandler, errorHandler, forbidden, notFoundHandler } from './errors.js';
 import { schemas, validate } from './validation.js';
 
-export function createApp({ db, config }) {
+export function createApp({ db, config, mailService = createMailService(config) }) {
   const app = express();
-  const authenticate = createAuthenticate(config);
+  const userRepository = createUserRepository(db);
+  const authenticate = createAuthenticate(userRepository, config);
+  const csrfProtection = createCsrfProtection(config);
 
   const userController = createUserController(
-    createAuthService(createUserRepository(db), config)
+    createAuthService(userRepository, mailService, config),
+    config
   );
   const calendarController = createCalendarController(
     createCalendarService(createCalendarRepository(db))
@@ -55,10 +60,11 @@ export function createApp({ db, config }) {
       callback(forbidden('Origin not allowed'));
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
   }));
   app.use(express.json({ limit: '100kb' }));
+  app.use(csrfProtection);
 
   app.get('/', (_req, res) => res.json({ message: 'Calendar API is running' }));
   app.get('/health/live', (_req, res) => res.json({ status: 'ok' }));
@@ -67,8 +73,17 @@ export function createApp({ db, config }) {
     res.json({ status: 'ready' });
   }));
 
-  app.post('/register', authLimiter, validate(schemas.register), asyncHandler(userController.register));
-  app.post('/login', authLimiter, validate(schemas.login), asyncHandler(userController.login));
+  app.get('/auth/csrf', userController.csrf);
+  app.post('/auth/register', authLimiter, validate(schemas.register), asyncHandler(userController.register));
+  app.post('/auth/verify-email', authLimiter, validate(schemas.verifyEmail), asyncHandler(userController.verifyEmail));
+  app.post('/auth/resend-verification', authLimiter, validate(schemas.emailOnly), asyncHandler(userController.resendVerification));
+  app.post('/auth/login', authLimiter, validate(schemas.login), asyncHandler(userController.login));
+  app.post('/auth/refresh', authLimiter, asyncHandler(userController.refresh));
+  app.post('/auth/logout', asyncHandler(userController.logout));
+  app.get('/auth/session', authenticate, userController.session);
+  app.post('/auth/forgot-password', authLimiter, validate(schemas.emailOnly), asyncHandler(userController.forgotPassword));
+  app.post('/auth/reset-password', authLimiter, validate(schemas.resetPassword), asyncHandler(userController.resetPassword));
+  app.post('/auth/legacy-email', authLimiter, validate(schemas.legacyEmail), asyncHandler(userController.legacyEmail));
 
   app.get('/calendars', authenticate, asyncHandler(calendarController.list));
   app.post('/calendars', authenticate, validate(schemas.calendarCreate), asyncHandler(calendarController.create));

@@ -1,36 +1,45 @@
-// src/services/userService.js
-import axios from 'axios';
+import { api } from './apiClient';
 
-const API_URL = 'http://localhost:3001';  // Adjust if needed
-
-// Register a new user
-export const registerUser = async (username, password) => {
-  const response = await axios.post(`${API_URL}/register`, { username, password });
+export async function registerUser(username, email, password) {
+  const response = await api.post('/auth/register', { username, email, password });
   return response.data;
-};
+}
 
-// Log in an existing user
-export const loginUser = async (username, password) => {
-  const response = await axios.post(`${API_URL}/login`, { username, password });
-  
-  // Save token and username in localStorage
-  localStorage.setItem('token', response.data.token);
-  localStorage.setItem('username', response.data.username);
+export async function loginUser(email, password) {
+  const response = await api.post('/auth/login', { email, password });
+  return response.data.user;
+}
 
+export async function logoutUser() {
+  await api.post('/auth/logout');
+}
+
+export async function getSession() {
+  const response = await api.get('/auth/session');
+  return response.data.user;
+}
+
+export async function verifyEmail(token) {
+  const response = await api.post('/auth/verify-email', { token });
   return response.data;
-};
+}
 
-// Log out the user
-export const logoutUser = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('username');
-};
+export async function resendVerification(email) {
+  const response = await api.post('/auth/resend-verification', { email });
+  return response.data;
+}
 
-// Get current auth token
-export const getToken = () => localStorage.getItem('token');
+export async function forgotPassword(email) {
+  const response = await api.post('/auth/forgot-password', { email });
+  return response.data;
+}
 
-// Get current username (optional)
-export const getUsername = () => localStorage.getItem('username');
+export async function resetPassword(token, password) {
+  const response = await api.post('/auth/reset-password', { token, password });
+  return response.data;
+}
 
-// Check if user is logged in
-export const isLoggedIn = () => !!localStorage.getItem('token');
+export async function enrollLegacyEmail(username, password, email) {
+  const response = await api.post('/auth/legacy-email', { username, password, email });
+  return response.data;
+}

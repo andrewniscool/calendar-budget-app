@@ -3,14 +3,15 @@ import { registerUser } from "../services/userService";
 
 function SignUpForm({ onSignUpSuccess, onCancel }) {
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await registerUser(username, password);
-      onSignUpSuccess();
+      const result = await registerUser(username, email, password);
+      onSignUpSuccess(result.message);
     } catch (error) {
       setMessage(error.response?.data?.message || "Registration failed");
     }
@@ -24,6 +25,13 @@ function SignUpForm({ onSignUpSuccess, onCancel }) {
         placeholder="Username"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
+        required
+      />
+      <input
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
         required
       />
       <input

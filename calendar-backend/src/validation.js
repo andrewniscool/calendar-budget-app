@@ -11,15 +11,27 @@ const date = z.string()
     return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
   }, 'Date must be valid');
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Color must be a six-digit hex value');
+const email = z.string().trim().email().max(254).transform((value) => value.toLowerCase());
+const password = z.string().min(8).max(72);
+const accountToken = z.string().min(32).max(200);
 
 export const schemas = {
   register: z.object({
     username: nonEmptyText('Username', 50).min(3, 'Username must be at least 3 characters'),
-    password: z.string().min(8).max(72),
+    email,
+    password,
   }),
   login: z.object({
+    email,
+    password: z.string().min(1).max(72),
+  }),
+  verifyEmail: z.object({ token: accountToken }),
+  emailOnly: z.object({ email }),
+  resetPassword: z.object({ token: accountToken, password }),
+  legacyEmail: z.object({
     username: nonEmptyText('Username', 50),
     password: z.string().min(1).max(72),
+    email,
   }),
   calendarCreate: z.object({
     name: nonEmptyText('Calendar name', 100),

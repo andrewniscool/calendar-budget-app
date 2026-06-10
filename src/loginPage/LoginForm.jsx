@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { loginUser } from "../services/userService";
 
-function LoginForm({ onLoginSuccess, onShowSignUp }) {
-  const [username, setUsername] = useState("");
+function LoginForm({ onLoginSuccess, onShowSignUp, onForgotPassword, onLegacyAccount, onResend }) {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -12,8 +12,8 @@ function LoginForm({ onLoginSuccess, onShowSignUp }) {
     setLoading(true);
     setMessage("");
     try {
-      await loginUser(username, password);
-      onLoginSuccess();
+      const user = await loginUser(email, password);
+      onLoginSuccess(user);
     } catch (error) {
       setMessage(error.response?.data?.message || "Login failed");
     }
@@ -24,10 +24,10 @@ function LoginForm({ onLoginSuccess, onShowSignUp }) {
     <form onSubmit={handleSubmit} style={{ maxWidth: 300, margin: "auto", paddingTop: 100 }}>
       <h2>Login</h2>
       <input
-        type="text"
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
         required
         disabled={loading}
       />
@@ -45,6 +45,15 @@ function LoginForm({ onLoginSuccess, onShowSignUp }) {
       {message && <p style={{ color: "red" }}>{message}</p>}
       <button type="button" onClick={onShowSignUp} style={{ marginTop: 10 }}>
         Don't have an account? Sign Up
+      </button>
+      <button type="button" onClick={onForgotPassword} style={{ marginTop: 10 }}>
+        Forgot password
+      </button>
+      <button type="button" onClick={onResend} style={{ marginTop: 10 }}>
+        Resend verification
+      </button>
+      <button type="button" onClick={onLegacyAccount} style={{ marginTop: 10 }}>
+        Existing username-only account
       </button>
     </form>
   );

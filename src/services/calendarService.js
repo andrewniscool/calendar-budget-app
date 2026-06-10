@@ -1,17 +1,8 @@
-import axios from 'axios';
-
-const API_URL = 'http://localhost:3001/calendars';
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
-  return { Authorization: `Bearer ${token}` };
-};
+import { api } from './apiClient';
 
 export const fetchCalendars = async () => {
   try {
-    const response = await axios.get(API_URL, {
-      headers: getAuthHeaders(),
-    });
+    const response = await api.get('/calendars');
     return response.data;
   } catch (error) {
     console.error("Error fetching calendars:", error);
@@ -25,9 +16,7 @@ export const createCalendar = async (name) => {
   }
   
   try {
-    const response = await axios.post(API_URL, { name: name.trim() }, {
-      headers: getAuthHeaders(),
-    });
+    const response = await api.post('/calendars', { name: name.trim() });
     return response.data;
   } catch (error) {
     console.error("Error creating calendar:", error);
@@ -41,9 +30,7 @@ export const deleteCalendar = async (id) => {
   }
   
   try {
-    const response = await axios.delete(`${API_URL}/${id}`, {
-      headers: getAuthHeaders(),
-    });
+    const response = await api.delete(`/calendars/${id}`);
     return response.data;
   } catch (error) {
     console.error("Error deleting calendar:", error);

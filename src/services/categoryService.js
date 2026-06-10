@@ -1,11 +1,4 @@
-import axios from "axios";
-
-const API_URL = "http://localhost:3001/categories";
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("token");
-  return { Authorization: `Bearer ${token}` };
-};
+import { api } from "./apiClient";
 
 export const fetchCategories = async (calendarId) => {
   if (!calendarId) {
@@ -13,9 +6,7 @@ export const fetchCategories = async (calendarId) => {
   }
   
   try {
-    const response = await axios.get(`${API_URL}?calendarId=${calendarId}`, {
-      headers: getAuthHeaders(),
-    });
+    const response = await api.get(`/categories?calendarId=${calendarId}`);
     return response.data;
   } catch (error) {
     console.error("Error fetching categories:", error);
@@ -32,9 +23,7 @@ export const createCategory = async (categoryData) => {
   }
 
   try {
-    const response = await axios.post(API_URL, categoryData, {
-      headers: getAuthHeaders(),
-    });
+    const response = await api.post('/categories', categoryData);
     return response.data;
   } catch (error) {
     console.error("Error creating category:", error);
@@ -54,9 +43,7 @@ export const updateCategory = async (id, categoryData) => {
   }
 
   try {
-    const response = await axios.put(`${API_URL}/${id}`, categoryData, {
-      headers: getAuthHeaders(),
-    });
+    const response = await api.put(`/categories/${id}`, categoryData);
     return response.data;
   } catch (error) {
     console.error("Error updating category:", error);
@@ -70,9 +57,7 @@ export const deleteAllCategories = async (calendarId) => {
   }
   
   try {
-    const response = await axios.delete(`${API_URL}/all?calendarId=${calendarId}`, {
-      headers: getAuthHeaders(),
-    });
+    const response = await api.delete(`/categories/all?calendarId=${calendarId}`);
     return response.data;
   } catch (error) {
     console.error("Error deleting all categories:", error);
@@ -86,9 +71,7 @@ export const deleteCategory = async (id) => {
   }
   
   try {
-    const response = await axios.delete(`${API_URL}/${id}`, { 
-      headers: getAuthHeaders() 
-    });
+    const response = await api.delete(`/categories/${id}`);
     return response.data;
   } catch (error) {
     console.error("Error deleting category:", error);

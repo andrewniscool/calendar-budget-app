@@ -1,11 +1,4 @@
-import axios from "axios";
-
-const API_URL = "http://localhost:3001/events";
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("token");
-  return { Authorization: `Bearer ${token}` };
-};
+import { api } from "./apiClient";
 
 export const fetchEvents = async (calendarId) => {
   if (!calendarId) {
@@ -13,9 +6,7 @@ export const fetchEvents = async (calendarId) => {
   }
   
   try {
-    const response = await axios.get(`${API_URL}?calendarId=${calendarId}`, {
-      headers: getAuthHeaders(),
-    });
+    const response = await api.get(`/events?calendarId=${calendarId}`);
     return response.data;
   } catch (error) {
     console.error("Error fetching events:", error);
@@ -36,13 +27,12 @@ export const saveEvent = async (eventData) => {
 
   try {
     const method = eventData.id ? "PUT" : "POST";
-    const url = eventData.id ? `${API_URL}/${eventData.id}` : API_URL;
+    const url = eventData.id ? `/events/${eventData.id}` : '/events';
     
-    const response = await axios({
+    const response = await api({
       method,
       url,
       data: eventData,
-      headers: getAuthHeaders(),
     });
     return response.data;
   } catch (error) {
@@ -57,9 +47,7 @@ export const deleteEvent = async (id) => {
   }
   
   try {
-    const response = await axios.delete(`${API_URL}/${id}`, { 
-      headers: getAuthHeaders() 
-    });
+    const response = await api.delete(`/events/${id}`);
     return response.data;
   } catch (error) {
     console.error("Error deleting event:", error);
