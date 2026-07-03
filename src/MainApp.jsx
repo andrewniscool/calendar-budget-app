@@ -5,17 +5,6 @@ import Sidebar from "./components/Sidebar";
 import Calendar from "./components/Calendar";
 import { fetchEvents, saveEvent, deleteEvent } from "./services/eventService";
 
-function mapEventFromApi(event) {
-  return {
-    ...event,
-    timeStart: event.timeStart ?? event.time_start,
-    timeEnd: event.timeEnd ?? event.time_end,
-    categoryId: event.categoryId ?? event.category_id ?? "",
-    categoryName: event.categoryName ?? event.category_name ?? event.category ?? "Uncategorized",
-    categoryColor: event.categoryColor ?? event.category_color ?? "",
-  };
-}
-
 function MainApp({ calendarId, onLogout }) {
   const [events, setEvents] = useState([]);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -40,8 +29,7 @@ function MainApp({ calendarId, onLogout }) {
     const getEvents = async () => {
       try {
         const data = await fetchEvents(calendarId);
-        const mappedEvents = data.map(mapEventFromApi);
-        setEvents(mappedEvents);
+        setEvents(data);
       } catch (err) {
         console.error("Error fetching events:", err);
       }
@@ -72,16 +60,14 @@ function MainApp({ calendarId, onLogout }) {
       if (editingEvent) {
         eventData.id = editingEvent.id;
         const updatedEvent = await saveEvent(eventData);
-        const mappedEvent = mapEventFromApi(updatedEvent);
         setEvents((prev) =>
           prev.map((event) =>
-            event.id === editingEvent.id ? { ...event, ...mappedEvent } : event
+            event.id === editingEvent.id ? { ...event, ...updatedEvent } : event
           )
         );
       } else {
         const newEvent = await saveEvent(eventData);
-        const mappedEvent = mapEventFromApi(newEvent);
-        setEvents((prev) => [...prev, mappedEvent]);
+        setEvents((prev) => [...prev, newEvent]);
       }
       setEditingEvent(null);
       setIsEventModalOpen(false);

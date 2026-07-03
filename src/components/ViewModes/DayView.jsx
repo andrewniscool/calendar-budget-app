@@ -1,27 +1,13 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import dayjs from "dayjs";
 import EventModal from "../EventModal";
-
-function getMinutes(timeStr) {
-  if (!timeStr || !timeStr.includes(":")) return 0;
-  const [h, m] = timeStr.split(":").map(Number);
-  return h * 60 + m;
-}
-
-function formatHour(hour) {
-  const suffix = hour >= 12 ? "PM" : "AM";
-  const standard = hour % 12 === 0 ? 12 : hour % 12;
-  return `${standard} ${suffix}`;
-}
-
-function getTextColor(bgColor) {
-  const hex = bgColor.replace("#", "");
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.6 ? "#000000" : "#FFFFFF";
-}
+import {
+  buildPendingEvent,
+  formatHour,
+  getMinutes,
+  getTextColor,
+  positionModalFromClick,
+} from "./calendarViewUtils";
 
 function DayView({
   categories,
@@ -67,15 +53,7 @@ function DayView({
 
   function handleTimeClick(hour, e) {
     const dateStr = dayjs(today).format("YYYY-MM-DD");
-
-    const pending = {
-      title: "New Event",
-      timeStart: `${hour.toString().padStart(2, "0")}:00`,
-      timeEnd: `${(hour + 1).toString().padStart(2, "0")}:00`,
-      date: dateStr,
-      categoryId: "",
-      budget: 0,
-    };
+    const pending = buildPendingEvent({ date: dateStr, startHour: hour });
 
     setPendingEvent(pending);
     setSelectedDate(dateStr);
@@ -86,24 +64,7 @@ function DayView({
       const previewEl = document.querySelector('[data-event-id="preview"]');
       if (!previewEl) return;
 
-      const rect = previewEl.getBoundingClientRect();
-      const modalWidth = 300;
-      const modalHeight = 500;
-
-      let top = e.clientY + window.scrollY;
-      let left = e.clientX + window.scrollX + 8;
-      console.log("Clicked at:", e.clientX, e.clientY);
-
-      if (left + modalWidth > window.innerWidth) {
-        left = rect.left - modalWidth - 8 + window.scrollX;
-      }
-
-      const maxTop = document.documentElement.scrollHeight - modalHeight - 16;
-      if (top > maxTop) {
-        top = maxTop;
-      }
-
-      setModalPosition({ top, left });
+      setModalPosition(positionModalFromClick({ x: e.clientX, y: e.clientY }, previewEl));
       setIsEventModalOpen(true);
     }, 0);
   }

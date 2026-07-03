@@ -1,5 +1,16 @@
 import { api } from "./apiClient";
 
+export function mapEventFromApi(event) {
+  return {
+    ...event,
+    timeStart: event.timeStart ?? event.time_start,
+    timeEnd: event.timeEnd ?? event.time_end,
+    categoryId: event.categoryId ?? event.category_id ?? "",
+    categoryName: event.categoryName ?? event.category_name ?? event.category ?? "Uncategorized",
+    categoryColor: event.categoryColor ?? event.category_color ?? "",
+  };
+}
+
 export const fetchEvents = async (calendarId) => {
   if (!calendarId) {
     throw new Error("calendarId is required to fetch events");
@@ -7,7 +18,7 @@ export const fetchEvents = async (calendarId) => {
   
   try {
     const response = await api.get(`/events?calendarId=${calendarId}`);
-    return response.data;
+    return response.data.map(mapEventFromApi);
   } catch (error) {
     console.error("Error fetching events:", error);
     throw new Error(error.response?.data?.error || "Failed to fetch events");
@@ -34,7 +45,7 @@ export const saveEvent = async (eventData) => {
       url,
       data: eventData,
     });
-    return response.data;
+    return mapEventFromApi(response.data);
   } catch (error) {
     console.error("Error saving event:", error);
     throw new Error(error.response?.data?.error || "Failed to save event");

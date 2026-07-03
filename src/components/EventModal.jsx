@@ -1,8 +1,10 @@
-import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
-// eslint-disable-next-line no-unused-vars
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useEventModalForm } from "./useEventModalForm";
 
-const EventModal = forwardRef(function EventModal({
+const MotionDiv = motion.div;
+
+function EventModal({
   isOpen,
   setIsOpen,
   onSave,
@@ -10,83 +12,14 @@ const EventModal = forwardRef(function EventModal({
   editingEvent,
   categories,
   selectedHour,
-  clickCoords,
   selectedDate,
   modalPosition,
-  setModalPosition,
   setPendingEvent
-}, ref) {
-  const modalRef = useRef();
-  const [title, setTitle] = useState("");
-  const [budget, setBudget] = useState("");
-  const [timeStart, setTimeStart] = useState("");
-  const [timeEnd, setTimeEnd] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [date, setDate] = useState(editingEvent?.date || new Date().toISOString().split("T")[0]);
-
-  useImperativeHandle(ref, () => ({
-    getSize: () => {
-      const rect = modalRef.current?.getBoundingClientRect();
-      return rect ? { width: rect.width, height: rect.height } : { width: 380, height: 500 };
-    }
-  }));
-
-  useEffect(() => {
-    if (isOpen && clickCoords && modalRef.current) {
-      const modalWidth = modalRef.current.offsetWidth;
-      const modalHeight = modalRef.current.offsetHeight;
-      const padding = 16;
-      const screenWidth = window.innerWidth;
-      const screenHeight = window.innerHeight;
-
-      let left = clickCoords.x + padding;
-      let top;
-
-      if (left + modalWidth > screenWidth) {
-        left = clickCoords.x - modalWidth - padding;
-      }
-
-      if (clickCoords.y + modalHeight + padding > screenHeight) {
-        top = clickCoords.y - modalHeight - padding;
-      } else {
-        top = clickCoords.y + padding;
-      }
-
-      top = Math.max(top, padding);
-      setModalPosition({ top: top + window.scrollY, left: left + window.scrollX });
-    }
-  }, [isOpen, clickCoords, setModalPosition]);
-
-  useEffect(() => {
-    if (isOpen) {
-      if (editingEvent) {
-        setDate(new Date(editingEvent.date).toISOString().split("T")[0]);
-        setTitle(editingEvent.title || "");
-        setBudget(editingEvent.budget || "");
-        setTimeStart(editingEvent.timeStart || "");
-        setTimeEnd(editingEvent.timeEnd || "");
-        setCategoryId(String(editingEvent.categoryId || ""));
-      } else {
-        const defaultDate = selectedDate || new Date().toISOString().split("T")[0];
-        const now = new Date();
-        const defaultStart = now.toTimeString().slice(0, 5);
-        const defaultEnd = new Date(now.getTime() + 60 * 60 * 1000).toTimeString().slice(0, 5);
-        const start = selectedHour !== undefined
-          ? selectedHour.toString().padStart(2, "0") + ":00"
-          : defaultStart;
-        const end = selectedHour !== undefined
-          ? ((selectedHour + 1) % 24).toString().padStart(2, "0") + ":00"
-          : defaultEnd;
-
-        setDate(defaultDate);
-        setTitle("");
-        setBudget("");
-        setTimeStart(start);
-        setTimeEnd(end);
-        setCategoryId("");
-      }
-    }
-  }, [isOpen, editingEvent, selectedHour, selectedDate]);
+}) {
+  const {
+    values: { title, date, budget, timeStart, timeEnd, categoryId },
+    setters: { setTitle, setDate, setBudget, setTimeStart, setTimeEnd, setCategoryId },
+  } = useEventModalForm({ isOpen, editingEvent, selectedDate, selectedHour });
 
   useEffect(() => {
     if (!isOpen) {
@@ -112,7 +45,7 @@ const EventModal = forwardRef(function EventModal({
       {isOpen && (
         <>
           {/* Backdrop without black or blur */}
-          <motion.div
+          <MotionDiv
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
             initial={{ opacity: 0 }}
@@ -121,8 +54,7 @@ const EventModal = forwardRef(function EventModal({
             transition={{ duration: 0.3 }}
           />
 
-          <motion.div
-            ref={modalRef}
+          <MotionDiv
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
@@ -315,11 +247,11 @@ const EventModal = forwardRef(function EventModal({
                 )}
               </div>
             </div>
-          </motion.div>
+          </MotionDiv>
         </>
       )}
     </AnimatePresence>
   );
-});
+}
 
 export default EventModal;

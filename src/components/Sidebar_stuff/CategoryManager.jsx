@@ -1,4 +1,3 @@
-// ✅ Fixed CategoryManager with proper calendarId handling
 import { useEffect, useState } from "react";
 import {
   fetchCategories,
@@ -11,22 +10,14 @@ import { HiDotsVertical } from "react-icons/hi";
 import { MdEdit, MdDelete } from "react-icons/md";
 import { FiChevronDown } from "react-icons/fi";
 import AddCategoryModal from "./AddCategoryModal";
-import "../styles/checkbox.css"; // Ensure you have the correct path to your CSS
+import { getTextColor } from "../ViewModes/calendarViewUtils";
+import "../styles/checkbox.css";
 
 const presetColors = [
   "#FFF689", "#F4D35E", "#FFB88A", "#FF9C5B", "#F67B45", "#FBC2C2", "#E39B99",
   "#CB7876", "#B4CFA4", "#8BA47C", "#62866C", "#A0C5E3", "#81B2D9", "#32769B",
   "#BBA6DD", "#8C7DA8", "#64557B", "#1E2136",
 ];
-
-function getTextColor(bgColor) {
-  const hex = bgColor.replace("#", "");
-  const r = parseInt(hex.substr(0, 2), 16);
-  const g = parseInt(hex.substr(2, 2), 16);
-  const b = parseInt(hex.substr(4, 2), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.6 ? "#000000" : "#FFFFFF";
-}
 
 function CategoryDropdown({ categories, onAddClick, handleDeleteCategory, toggleVisibility, onEditClick }) {
   const [open, setOpen] = useState(false);
@@ -152,7 +143,6 @@ function CategoryManager({ categories, setCategories, calendarId }) {
     );
     if (nameExists) return setError("Category name already exists.");
 
-    // If editing existing category
     if (categoryData.category_id) {
       updateCategory(categoryData.category_id, {
         name: trimmedName,
@@ -177,7 +167,6 @@ function CategoryManager({ categories, setCategories, calendarId }) {
       return;
     }
 
-    // Creating new category - include calendarId
     createCategory({ 
       name: trimmedName, 
       color: categoryData.color,
@@ -203,8 +192,8 @@ function CategoryManager({ categories, setCategories, calendarId }) {
   const handleClearAll = async () => {
     if (window.confirm("Clear all categories?")) {
       try {
-        await deleteAllCategories(calendarId); // pass calendarId
-        setCategories([]); // clear local state
+        await deleteAllCategories(calendarId);
+        setCategories([]);
         setShowToast(true);
         setTimeout(() => setShowToast(false), 3000);
       } catch (err) {
@@ -214,7 +203,6 @@ function CategoryManager({ categories, setCategories, calendarId }) {
     }
   };
 
-  // Don't render if no calendarId
   if (!calendarId) {
     return <div>Loading categories...</div>;
   }

@@ -24,7 +24,6 @@ function TodayButton({ setSelectedDate, children }) {
     // Set selected date to today (as dayjs object to maintain consistency)
     const today = dayjs();
     setSelectedDate(today);
-    console.log("Selected date set to today:", today.format("YYYY-MM-DD"));
   };
 
   return (

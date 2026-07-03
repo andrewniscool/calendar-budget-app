@@ -1,55 +1,14 @@
 import { Fragment, useEffect, useState, useRef, useLayoutEffect, useCallback } from "react";
 import dayjs from "dayjs";
 import EventModal from "../EventModal";
-
-function getStartOfWeek(date) {
-  const start = new Date(date);
-  const day = start.getDay(); // 0 (Sun) to 6 (Sat)
-  start.setDate(start.getDate() - day); // subtract 0 if Sunday, 1 if Monday, etc.
-  start.setHours(0, 0, 0, 0);
-  return start;
-}
-
-
-function getMinutes(timeStr) {
-  if (timeStr === undefined) {
-    console.error("Time is undefined");  // Log if time is undefined
-    return 0;  // Return 0 if the input is invalid
-  }
-  
-  else if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) {
-    console.error("Invalid time format:", timeStr);  // Log if time is invalid
-    return 0;  // Return 0 if the input is invalid
-  }
-
-  if (timeStr.length === 5) {
-    timeStr += ":00";  // Add seconds if it's in HH:mm format (e.g., "14:00" becomes "14:00:00")
-  }
-
-  const [h, m, s] = timeStr.split(":").map(Number);  // Split and convert to numbers
-
-  if (isNaN(h) || isNaN(m) || isNaN(s)) {
-    console.error("Invalid time value:", timeStr);  // Log the error if parsing fails
-    return 0;
-  }
-
-  return h * 60 + m;  // Convert to total minutes
-}
-
-function formatHour(hour) {
-  const suffix = hour >= 12 ? "PM" : "AM";
-  const standard = hour % 12 === 0 ? 12 : hour % 12;
-  return `${standard} ${suffix}`;
-}
-
-function getTextColor(bgColor) {
-  const hex = bgColor.replace("#", "");
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.6 ? "#000000" : "#FFFFFF";
-}
+import {
+  buildPendingEvent,
+  formatHour,
+  getMinutes,
+  getStartOfWeek,
+  getTextColor,
+  positionModalNextToElement,
+} from "./calendarViewUtils";
 
 function WeekView({
   categories,
@@ -151,15 +110,11 @@ useEffect(() => {
     if (isDragging && dragStart && dragEnd) {
       const startHour = Math.min(dragStart.hour, dragEnd.hour);
       const endHour = Math.max(dragStart.hour, dragEnd.hour) + 1;
-
-      const pending = {
-        title: "New Event",
-        timeStart: `${startHour.toString().padStart(2, "0")}:00`,
-        timeEnd: `${endHour.toString().padStart(2, "0")}:00`,
+      const pending = buildPendingEvent({
         date: dragStart.day.toISOString().split("T")[0],
-        categoryId: "",
-        budget: 0,
-      };
+        startHour,
+        endHour,
+      });
 
       setPendingEvent(pending);
       
@@ -170,23 +125,10 @@ useEffect(() => {
         const previewEl = document.querySelector('[data-event-id="preview"]');
         if (!previewEl) return;
 
-        const rect = previewEl.getBoundingClientRect();
-        const modalWidth = 300;
-        const modalHeight = 500;
-
-        let top = rect.top + window.scrollY;
-        let left = rect.right + window.scrollX + 8;
-
-        if (left + modalWidth > window.innerWidth) {
-          left = rect.left - modalWidth - 8 + window.scrollX;
-        }
-
-        const maxTop = document.documentElement.scrollHeight - modalHeight - 16;
-        if (top > maxTop) {
-          top = maxTop;
-        }
-
-        setModalPosition({ top, left });
+        setModalPosition(positionModalNextToElement(previewEl, {
+          bottomOffset: 16,
+          clampToDocument: true,
+        }));
         setIsEventModalOpen(true);
       }, 0);
     }
@@ -202,14 +144,7 @@ useEffect(() => {
 
   function handleTimeCellClick(day, hour) {
     const dateStr = day.toISOString().split("T")[0];
-    const pending = {
-      title: "New Event",
-      timeStart: `${hour.toString().padStart(2, "0")}:00`,
-      timeEnd: `${(hour + 1).toString().padStart(2, "0")}:00`,
-      date: dateStr,
-      categoryId: "",
-      budget: 0,
-    };
+    const pending = buildPendingEvent({ date: dateStr, startHour: hour });
 
     setPendingEvent(pending);
     setSelectedHour(hour);
@@ -222,25 +157,7 @@ setTimeout(() => {
   const previewEl = document.querySelector('[data-event-id="preview"]');
   if (!previewEl) return;
 
-  const rect = previewEl.getBoundingClientRect();
-  const modalWidth = 300;
-  const modalHeight = 500;
-
-  let top = rect.top + window.scrollY;
-  let left = rect.right + window.scrollX + 8;
-
-  // Shift left if right edge overflows window
-  if (left + modalWidth > window.innerWidth) {
-    left = rect.left - modalWidth - 8 + window.scrollX;
-  }
-
-  // Clamp top so modal does not overflow viewport bottom
-  const maxTop = window.scrollY + window.innerHeight - modalHeight - 200;
-  if (top > maxTop) {
-    top = maxTop;
-  }
-
-  setModalPosition({ top, left });
+  setModalPosition(positionModalNextToElement(previewEl, { bottomOffset: 200 }));
   setIsEventModalOpen(true);
 }, 0);
   }
