@@ -6,6 +6,7 @@ import {
   resetPassword,
   verifyEmail,
 } from '../services/userService';
+import AuthCard from './AuthCard';
 
 const titles = {
   forgot: 'Forgot Password',
@@ -49,56 +50,77 @@ function AccountActionForm({ mode, token, onDone, onCancel }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ maxWidth: 340, margin: 'auto', paddingTop: 100 }}>
-      <h2>{titles[mode]}</h2>
+    <AuthCard title={titles[mode]} subtitle="Complete this step to continue.">
+    <form onSubmit={handleSubmit} className="space-y-4">
       {mode === 'verify' ? (
-        <p>{loading ? 'Verifying...' : message}</p>
+        <p className="rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800">
+          {loading ? 'Verifying...' : message}
+        </p>
       ) : (
         <>
           {mode === 'legacy' && (
-            <input
-              type="text"
-              placeholder="Existing username"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              required
-              disabled={loading}
-            />
+            <label className="block text-left">
+              <span className="text-sm font-medium text-slate-700">Existing username</span>
+              <input
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                type="text"
+                placeholder="Existing username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                required
+                disabled={loading}
+              />
+            </label>
           )}
           {mode !== 'reset' && (
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-              disabled={loading}
-            />
+            <label className="block text-left">
+              <span className="text-sm font-medium text-slate-700">Email</span>
+              <input
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+                disabled={loading}
+              />
+            </label>
           )}
           {(mode === 'legacy' || mode === 'reset') && (
-            <input
-              type="password"
-              placeholder={mode === 'reset' ? 'New password' : 'Current password'}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              minLength={8}
-              required
-              disabled={loading}
-            />
+            <label className="block text-left">
+              <span className="text-sm font-medium text-slate-700">
+                {mode === 'reset' ? 'New password' : 'Current password'}
+              </span>
+              <input
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                type="password"
+                placeholder={mode === 'reset' ? 'New password' : 'Current password'}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                minLength={8}
+                required
+                disabled={loading}
+              />
+            </label>
           )}
-          <button type="submit" disabled={loading}>
+          <button
+            className="w-full rounded-md bg-blue-600 px-4 py-2.5 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+            type="submit"
+            disabled={loading}
+          >
             {loading ? 'Submitting...' : 'Submit'}
           </button>
-          {message && <p>{message}</p>}
+          {message && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{message}</p>}
         </>
       )}
-      <button type="button" onClick={() => {
+      <button className="w-full text-sm text-slate-600 hover:text-blue-700" type="button" onClick={() => {
         onDone?.();
         onCancel?.();
       }}>
         Back to login
       </button>
     </form>
+    </AuthCard>
   );
 }
 

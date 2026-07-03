@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { loginUser } from "../services/userService";
+import AuthCard from "./AuthCard";
 
 function LoginForm({ onLoginSuccess, onShowSignUp, onForgotPassword, onLegacyAccount, onResend }) {
   const [email, setEmail] = useState("");
@@ -21,41 +22,57 @@ function LoginForm({ onLoginSuccess, onShowSignUp, onForgotPassword, onLegacyAcc
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ maxWidth: 300, margin: "auto", paddingTop: 100 }}>
-      <h2>Login</h2>
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-        disabled={loading}
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-        disabled={loading}
-      />
-      <button type="submit" disabled={loading}>
-        {loading ? "Logging in..." : "Login"}
-      </button>
-      {message && <p style={{ color: "red" }}>{message}</p>}
-      <button type="button" onClick={onShowSignUp} style={{ marginTop: 10 }}>
-        Don't have an account? Sign Up
-      </button>
-      <button type="button" onClick={onForgotPassword} style={{ marginTop: 10 }}>
-        Forgot password
-      </button>
-      <button type="button" onClick={onResend} style={{ marginTop: 10 }}>
-        Resend verification
-      </button>
-      <button type="button" onClick={onLegacyAccount} style={{ marginTop: 10 }}>
-        Existing username-only account
-      </button>
-    </form>
+    <AuthCard title="Sign in" subtitle="Open your calendar and budget workspace.">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <label className="block text-left">
+          <span className="text-sm font-medium text-slate-700">Email</span>
+          <input
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            disabled={loading}
+          />
+        </label>
+        <label className="block text-left">
+          <span className="text-sm font-medium text-slate-700">Password</span>
+          <input
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+            type="password"
+            placeholder="Enter your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={loading}
+          />
+        </label>
+        <button
+          className="w-full rounded-md bg-blue-600 px-4 py-2.5 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+          type="submit"
+          disabled={loading}
+        >
+          {loading ? "Logging in..." : "Login"}
+        </button>
+        {message && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{message}</p>}
+      </form>
+
+      <div className="mt-6 grid gap-2 text-sm">
+        <button type="button" onClick={onShowSignUp} className="text-blue-700 hover:underline">
+          Don't have an account? Sign up
+        </button>
+        <button type="button" onClick={onForgotPassword} className="text-slate-600 hover:text-blue-700">
+          Forgot password
+        </button>
+        <button type="button" onClick={onResend} className="text-slate-600 hover:text-blue-700">
+          Resend verification
+        </button>
+        <button type="button" onClick={onLegacyAccount} className="text-slate-600 hover:text-blue-700">
+          Existing username-only account
+        </button>
+      </div>
+    </AuthCard>
   );
 }
 
