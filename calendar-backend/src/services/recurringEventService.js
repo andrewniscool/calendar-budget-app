@@ -2,20 +2,20 @@ import { badRequest, notFound } from '../errors.js';
 
 function translateDatabaseError(error) {
   if (error.code === '23503') {
-    throw badRequest('Category must belong to the event calendar');
+    throw badRequest('Category must belong to the recurring event calendar');
   }
   if (error.code === '23514') {
-    throw badRequest('Event values violate a database constraint');
+    throw badRequest('Recurring event values violate a database constraint');
   }
   throw error;
 }
 
-export function createEventService(repository) {
+export function createRecurringEventService(repository) {
   return {
-    async list(userId, { calendarId, startDate, endDate }) {
+    async list(userId, calendarId) {
       const exists = await repository.calendarExists(calendarId, userId);
       if (!exists) throw notFound('Calendar not found');
-      return repository.list(calendarId, userId, { startDate, endDate });
+      return repository.list(calendarId, userId);
     },
 
     async create(userId, data) {
@@ -28,19 +28,19 @@ export function createEventService(repository) {
       }
     },
 
-    async update(userId, eventId, data) {
+    async update(userId, recurringEventId, data) {
       try {
-        const updated = await repository.update(eventId, userId, data);
-        if (!updated) throw notFound('Event not found');
+        const updated = await repository.update(recurringEventId, userId, data);
+        if (!updated) throw notFound('Recurring event not found');
         return updated;
       } catch (error) {
         return translateDatabaseError(error);
       }
     },
 
-    async remove(userId, eventId) {
-      const deleted = await repository.remove(eventId, userId);
-      if (!deleted) throw notFound('Event not found');
+    async remove(userId, recurringEventId) {
+      const deleted = await repository.remove(recurringEventId, userId);
+      if (!deleted) throw notFound('Recurring event not found');
       return deleted;
     },
   };

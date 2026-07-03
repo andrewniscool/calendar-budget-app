@@ -16,13 +16,25 @@ export function createEventRepository(db) {
       return result.rowCount > 0;
     },
 
-    async list(calendarId, userId) {
+    async list(calendarId, userId, { startDate, endDate } = {}) {
+      const filters = ['e.calendar_id = $1', 'cal.user_id = $2'];
+      const values = [calendarId, userId];
+
+      if (startDate) {
+        values.push(startDate);
+        filters.push(`e.date >= $${values.length}`);
+      }
+      if (endDate) {
+        values.push(endDate);
+        filters.push(`e.date <= $${values.length}`);
+      }
+
       const result = await db.query(
         `${eventSelect}
          JOIN calendars cal ON cal.calendar_id = e.calendar_id
-         WHERE e.calendar_id = $1 AND cal.user_id = $2
+         WHERE ${filters.join(' AND ')}
          ORDER BY e.date, e.time_start`,
-        [calendarId, userId]
+        values
       );
       return result.rows;
     },

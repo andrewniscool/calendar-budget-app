@@ -40,8 +40,8 @@ export function errorHandler(error, req, res, _next) {
   }
 
   if (status >= 500) {
-    console.error(`${req.method} ${req.path}`, error);
+    console.error(`${req.method} ${req.path} requestId=${req.requestId ?? 'unknown'}`, error);
   }
 
-  res.status(status).json({ error: message, message, code });
+  res.status(status).json({ error: message, message, code, requestId: req.requestId });
 }

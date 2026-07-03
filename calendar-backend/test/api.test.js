@@ -87,7 +87,7 @@ beforeAll(() => {
 beforeEach(async () => {
   sentMail = [];
   await db.query(
-    'TRUNCATE account_tokens, refresh_tokens, events, categories, calendars, users RESTART IDENTITY CASCADE'
+    'TRUNCATE account_tokens, refresh_tokens, recurring_events, budget_limits, calendar_settings, events, categories, calendars, users RESTART IDENTITY CASCADE'
   );
 });
 
@@ -318,5 +318,178 @@ describe('tenant resources with cookie authentication', () => {
       timeEnd: '10:00',
       budget: 10,
     }, session.csrfToken).expect(400);
+  });
+
+  it('filters events by date range while preserving all-events fallback', async () => {
+    const session = await registerVerifyLogin('range-user', 'range@example.com');
+    const calendar = await createCalendar(session);
+
+    for (const event of [
+      ['Before', '2026-06-01'],
+      ['Inside', '2026-06-08'],
+      ['After', '2026-06-30'],
+    ]) {
+      await post(session.agent, '/events', {
+        calendarId: calendar.calendar_id,
+        title: event[0],
+        date: event[1],
+        timeStart: '09:00',
+        timeEnd: '10:00',
+        budget: 10,
+      }, session.csrfToken).expect(201);
+    }
+
+    const allEvents = await session.agent
+      .get(`/events?calendarId=${calendar.calendar_id}`)
+      .expect(200);
+    expect(allEvents.body.map((event) => event.title)).toEqual(['Before', 'Inside', 'After']);
+
+    const filtered = await session.agent
+      .get(`/events?calendarId=${calendar.calendar_id}&startDate=2026-06-05&endDate=2026-06-15`)
+      .expect(200);
+    expect(filtered.body).toHaveLength(1);
+    expect(filtered.body[0].title).toBe('Inside');
+  });
+
+  it('stores budget limits for an overall month and category-specific limits', async () => {
+    const session = await registerVerifyLogin('budget-user', 'budget@example.com');
+    const calendar = await createCalendar(session);
+    const category = await post(session.agent, '/categories', {
+      calendarId: calendar.calendar_id,
+      name: 'Food',
+      color: '#123456',
+    }, session.csrfToken).expect(201);
+
+    const saved = await session.agent
+      .put('/budget-limits')
+      .set('X-CSRF-Token', session.csrfToken)
+      .send({
+        calendarId: calendar.calendar_id,
+        period: '2026-06',
+        overall: 1000,
+        categories: [{ categoryId: category.body.category_id, amount: 250.5 }],
+      })
+      .expect(200);
+
+    expect(saved.body).toEqual({
+      calendarId: calendar.calendar_id,
+      period: '2026-06',
+      overall: 1000,
+      categories: [{ categoryId: category.body.category_id, amount: 250.5 }],
+    });
+
+    const listed = await session.agent
+      .get(`/budget-limits?calendarId=${calendar.calendar_id}&period=2026-06`)
+      .expect(200);
+    expect(listed.body).toEqual(saved.body);
+  });
+
+  it('keeps budget limits tenant-scoped and rejects categories from another calendar', async () => {
+    const session = await registerVerifyLogin('budget-scope-user', 'budget-scope@example.com');
+    const first = await createCalendar(session, 'First');
+    const second = await createCalendar(session, 'Second');
+    const category = await post(session.agent, '/categories', {
+      calendarId: second.calendar_id,
+      name: 'Other',
+      color: '#123456',
+    }, session.csrfToken).expect(201);
+
+    await session.agent
+      .put('/budget-limits')
+      .set('X-CSRF-Token', session.csrfToken)
+      .send({
+        calendarId: first.calendar_id,
+        period: '2026-06',
+        categories: [{ categoryId: category.body.category_id, amount: 50 }],
+      })
+      .expect(400);
+  });
+
+  it('returns default calendar settings and updates timezone/currency', async () => {
+    const session = await registerVerifyLogin('settings-user', 'settings@example.com');
+    const calendar = await createCalendar(session);
+
+    const defaults = await session.agent
+      .get(`/calendars/${calendar.calendar_id}/settings`)
+      .expect(200);
+    expect(defaults.body).toEqual({
+      calendar_id: calendar.calendar_id,
+      timezone: 'America/New_York',
+      currency: 'USD',
+    });
+
+    const updated = await session.agent
+      .put(`/calendars/${calendar.calendar_id}/settings`)
+      .set('X-CSRF-Token', session.csrfToken)
+      .send({ timezone: 'America/Los_Angeles', currency: 'cad' })
+      .expect(200);
+    expect(updated.body).toEqual({
+      calendar_id: calendar.calendar_id,
+      timezone: 'America/Los_Angeles',
+      currency: 'CAD',
+    });
+  });
+
+  it('stores recurring event definitions without expanding occurrences', async () => {
+    const session = await registerVerifyLogin('recurring-user', 'recurring@example.com');
+    const calendar = await createCalendar(session);
+    const category = await post(session.agent, '/categories', {
+      calendarId: calendar.calendar_id,
+      name: 'Bills',
+      color: '#654321',
+    }, session.csrfToken).expect(201);
+
+    const created = await post(session.agent, '/recurring-events', {
+      calendarId: calendar.calendar_id,
+      categoryId: category.body.category_id,
+      title: 'Rent',
+      startDate: '2026-06-01',
+      endDate: '2026-12-01',
+      timeStart: '08:00',
+      timeEnd: '09:00',
+      budget: 1200,
+      frequency: 'monthly',
+      interval: 1,
+    }, session.csrfToken).expect(201);
+
+    expect(created.body).toMatchObject({
+      calendar_id: calendar.calendar_id,
+      category_id: category.body.category_id,
+      title: 'Rent',
+      frequency: 'monthly',
+      interval_count: 1,
+    });
+
+    const listed = await session.agent
+      .get(`/recurring-events?calendarId=${calendar.calendar_id}`)
+      .expect(200);
+    expect(listed.body).toHaveLength(1);
+    expect(listed.body[0].title).toBe('Rent');
+
+    const updated = await session.agent
+      .put(`/recurring-events/${created.body.id}`)
+      .set('X-CSRF-Token', session.csrfToken)
+      .send({
+        calendarId: calendar.calendar_id,
+        categoryId: category.body.category_id,
+        title: 'Rent adjusted',
+        startDate: '2026-06-01',
+        endDate: '2026-12-01',
+        timeStart: '08:00',
+        timeEnd: '09:00',
+        budget: 1250,
+        frequency: 'monthly',
+        interval: 1,
+      })
+      .expect(200);
+    expect(updated.body.title).toBe('Rent adjusted');
+
+    await session.agent
+      .delete(`/recurring-events/${created.body.id}`)
+      .set('X-CSRF-Token', session.csrfToken)
+      .expect(200);
+    await session.agent
+      .get(`/recurring-events?calendarId=${calendar.calendar_id}`)
+      .expect(200, []);
   });
 });

@@ -1,6 +1,7 @@
 import { createApp } from './app.js';
 import { getConfig, loadEnv } from './config.js';
 import { createPool, verifyDatabase } from './db.js';
+import { cleanupExpiredAuthTokens } from './maintenance.js';
 
 loadEnv();
 
@@ -22,6 +23,8 @@ async function shutdown(signal) {
 
 async function start() {
   await verifyDatabase(db);
+  const cleanup = await cleanupExpiredAuthTokens(db);
+  console.log(`Cleaned up auth tokens: ${cleanup.refreshTokensDeleted} refresh, ${cleanup.accountTokensDeleted} account`);
   const app = createApp({ db, config });
   server = app.listen(config.PORT, () => {
     console.log(`Calendar API listening on http://localhost:${config.PORT}`);

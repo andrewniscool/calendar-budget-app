@@ -14,6 +14,11 @@ const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Color must be a six-digit h
 const email = z.string().trim().email().max(254).transform((value) => value.toLowerCase());
 const password = z.string().min(8).max(72);
 const accountToken = z.string().min(32).max(200);
+const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Period must use YYYY-MM format');
+const amount = z.coerce.number().nonnegative();
+const timezone = z.string().trim().min(1).max(64);
+const currency = z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, 'Currency must be a three-letter ISO code');
+const recurrenceFrequency = z.enum(['daily', 'weekly', 'monthly']);
 
 export const schemas = {
   register: z.object({
@@ -47,7 +52,14 @@ export const schemas = {
     color,
     calendarId: positiveId,
   }),
-  eventQuery: z.object({ calendarId: positiveId }),
+  eventQuery: z.object({
+    calendarId: positiveId,
+    startDate: date.optional(),
+    endDate: date.optional(),
+  }).refine((value) => !value.startDate || !value.endDate || value.endDate >= value.startDate, {
+    message: 'endDate must be on or after startDate',
+    path: ['endDate'],
+  }),
   eventCreate: z.object({
     title: nonEmptyText('Title', 200),
     date,
@@ -73,6 +85,60 @@ export const schemas = {
     path: ['timeEnd'],
   }),
   idParams: z.object({ id: positiveId }),
+  budgetLimitQuery: z.object({
+    calendarId: positiveId,
+    period: month,
+  }),
+  budgetLimitUpsert: z.object({
+    calendarId: positiveId,
+    period: month,
+    overall: amount.nullish(),
+    categories: z.array(z.object({
+      categoryId: positiveId,
+      amount,
+    })).default([]),
+  }),
+  calendarSettings: z.object({
+    timezone,
+    currency,
+  }),
+  recurringQuery: z.object({ calendarId: positiveId }),
+  recurringCreate: z.object({
+    calendarId: positiveId,
+    categoryId: positiveId.nullish(),
+    title: nonEmptyText('Title', 200),
+    startDate: date,
+    endDate: date.nullish(),
+    timeStart: time,
+    timeEnd: time,
+    budget: amount.default(0),
+    frequency: recurrenceFrequency,
+    interval: z.coerce.number().int().positive().default(1),
+  }).refine((value) => value.timeEnd > value.timeStart, {
+    message: 'timeEnd must be after timeStart',
+    path: ['timeEnd'],
+  }).refine((value) => !value.endDate || value.endDate >= value.startDate, {
+    message: 'endDate must be on or after startDate',
+    path: ['endDate'],
+  }),
+  recurringUpdate: z.object({
+    calendarId: positiveId,
+    categoryId: positiveId.nullish(),
+    title: nonEmptyText('Title', 200),
+    startDate: date,
+    endDate: date.nullish(),
+    timeStart: time,
+    timeEnd: time,
+    budget: amount.default(0),
+    frequency: recurrenceFrequency,
+    interval: z.coerce.number().int().positive().default(1),
+  }).refine((value) => value.timeEnd > value.timeStart, {
+    message: 'timeEnd must be after timeStart',
+    path: ['timeEnd'],
+  }).refine((value) => !value.endDate || value.endDate >= value.startDate, {
+    message: 'endDate must be on or after startDate',
+    path: ['endDate'],
+  }),
 };
 
 export function validate(schema, source = 'body') {

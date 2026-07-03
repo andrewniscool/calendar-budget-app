@@ -1,7 +1,7 @@
 export function createEventController(eventService) {
   return {
     async list(req, res) {
-      res.json(await eventService.list(req.user.id, req.query.calendarId));
+      res.json(await eventService.list(req.user.id, req.query));
     },
 
     async create(req, res) {
