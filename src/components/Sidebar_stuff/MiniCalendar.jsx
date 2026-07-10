@@ -1,83 +1,80 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dayjs from "dayjs";
 
+const WEEKDAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
+
 function MiniCalendar({ onDateClick, selectedDate }) {
-  const [currentMonth, setCurrentMonth] = useState(dayjs());
-  const [viewedDate, setViewedDate] = useState(selectedDate);
+  const [viewMonth, setViewMonth] = useState(() => dayjs(selectedDate || undefined));
 
+  // Follow the main calendar when the selected date changes elsewhere.
+  useEffect(() => {
+    if (selectedDate) setViewMonth(dayjs(selectedDate));
+  }, [selectedDate]);
 
-  const goToPrevMonth = () => setCurrentMonth(prev => prev.subtract(1, "month"));
-  const goToNextMonth = () => setCurrentMonth(prev => prev.add(1, "month"));
-
-  const startOfMonth = currentMonth.startOf("month");
-  const daysInMonth = currentMonth.daysInMonth();
-  const startDay = startOfMonth.day(); // 0 = Sunday
-
-  const days = [];
-
-  for (let i = 0; i < startDay; i++) {
-    days.push(null); // Empty cells for padding
-  }
-  for (let i = 1; i <= daysInMonth; i++) {
-    days.push(dayjs(currentMonth).date(i));
-  }
+  const monthStart = viewMonth.startOf("month");
+  const cells = [
+    ...Array.from({ length: monthStart.day() }, () => null),
+    ...Array.from({ length: viewMonth.daysInMonth() }, (_, i) => monthStart.date(i + 1)),
+  ];
 
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-sm font-semibold">{currentMonth.format("MMMM YYYY")}</div>
-        <div className="flex gap-1">
+    <div>
+      <div className="mb-1 flex items-center justify-between">
+        <span className="px-1 text-xs font-semibold text-slate-900">
+          {viewMonth.format("MMMM YYYY")}
+        </span>
+        <div className="flex items-center">
           <button
-            onClick={goToPrevMonth}
-            className="w-5 h-5 rounded-full flex items-center justify-center text-xs transition-shadow hover:bg-gray-100 hover:shadow-sm hover:shadow-gray-400 transition-all duration-500 ease-in-out active:scale-[.92] active:bg-gray-200"
+            onClick={() => setViewMonth((m) => m.subtract(1, "month"))}
+            aria-label="Previous month"
+            className="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
           >
-            &lt;
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
           </button>
           <button
-            onClick={goToNextMonth}
-            className="w-5 h-5 rounded-full flex items-center justify-center text-xs transition-shadow hover:bg-gray-100 hover:shadow-sm hover:shadow-gray-400 transition-all duration-500 ease-in-out active:scale-[.92] active:bg-gray-200"
+            onClick={() => setViewMonth((m) => m.add(1, "month"))}
+            aria-label="Next month"
+            className="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
           >
-            &gt;
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-xs text-center text-gray-500 mb-1">
-        {["S", "M", "T", "W", "T", "F", "S"].map((d) => <div key={d}>{d}</div>)}
-      </div>
-
-      <div className="grid grid-cols-7 gap-1 text-sm">
-        {days.map((day, i) => {
-          const isToday = day && day.isSame(dayjs(), "day");
-          const isViewed = day && viewedDate && day.isSame(viewedDate, "day");
-
-
-          let className = "aspect-square rounded-full flex items-center justify-center text-gray-700 transition-all duration-300 ease-in-out";
-
-          if (isToday) {
-            className += " bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 active:scale-[.92]";
-          } else if (isViewed) {
-            className += " bg-gray-200 text-black hover:bg-gray-300 active:bg-gray-400 active:scale-[.92]";
-          } else {
-            className += " hover:bg-gray-100 hover:shadow-sm active:bg-gray-200 active:scale-[.92]";
-          }
-
+      <div className="grid grid-cols-7 justify-items-center gap-y-0.5">
+        {WEEKDAY_INITIALS.map((d, i) => (
+          <span
+            key={`${d}-${i}`}
+            className="flex h-6 w-7 items-center justify-center text-[10px] font-semibold uppercase text-slate-400"
+          >
+            {d}
+          </span>
+        ))}
+        {cells.map((day, i) => {
+          if (!day) return <span key={`blank-${i}`} className="h-7 w-7" />;
+          const isToday = day.isSame(dayjs(), "day");
+          const isSelected =
+            !isToday && selectedDate && day.isSame(dayjs(selectedDate), "day");
           return (
             <button
-              key={i}
-              onClick={() => {
-                if (day) {
-                  setViewedDate(day); // ✅ Update internal state
-                  onDateClick?.(day.format("YYYY-MM-DD")); // ✅ Optional chaining in case it's undefined
-                }
-              }}
-              className={className}
+              key={day.format("YYYY-MM-DD")}
+              onClick={() => onDateClick?.(day.format("YYYY-MM-DD"))}
+              className={`flex h-7 w-7 items-center justify-center rounded-full text-xs transition-colors ${
+                isToday
+                  ? "bg-slate-900 font-semibold text-white hover:bg-slate-700"
+                  : isSelected
+                  ? "bg-slate-200 font-medium text-slate-900 hover:bg-slate-300"
+                  : "font-medium text-slate-600 hover:bg-slate-100"
+              }`}
             >
-              {day ? day.date() : ""}
+              {day.date()}
             </button>
           );
         })}
-
       </div>
     </div>
   );

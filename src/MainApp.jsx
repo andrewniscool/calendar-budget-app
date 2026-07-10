@@ -120,7 +120,7 @@ function MainApp({ calendarId, onLogout }) {
         setIsSidebarOpen={setIsSidebarOpen}
         onLogout={onLogout}
       />
-      <div className="flex flex-1 bg-gray-50 rounded-xl m-4 overflow-hidden shadow">
+      <div className="flex flex-1 min-h-0 bg-white border border-slate-200 rounded-lg m-3 overflow-hidden">
         <div className={`transition-all duration-300 ${isSidebarOpen ? "w-64" : "w-0"} overflow-hidden`}>
           <Sidebar
             calendarId = {calendarId}

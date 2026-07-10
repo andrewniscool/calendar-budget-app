@@ -26,7 +26,7 @@ function YearView({ setSelectedDate, setViewMode, selectedDate }) {
         {months.map((month, idx) => (
           <div key={idx} className="rounded p-2">
             <button
-              className="text-sm font-semibold mb-1 transform text-gray-800 hover:text-gray-500 active:text-gray-400 duration-150"
+              className="text-sm font-semibold mb-1 text-slate-900 hover:text-slate-500 transition-colors duration-150"
               onClick={ () => {
                   setSelectedDate(month.startOf("month"));
                   setViewMode("month");
@@ -41,7 +41,7 @@ function YearView({ setSelectedDate, setViewMode, selectedDate }) {
               {daysOfWeek.map((d) => (
                 <div
                   key={d}
-                  className={`w-[24px] h-[18px] sm:w-[28px] md:w-[32px] text-[10px] sm:text-[11px] md:text-[13px] rounded-full flex items-center justify-center`} 
+                  className={`w-[24px] h-[18px] sm:w-[28px] md:w-[32px] text-[10px] sm:text-[11px] md:text-[13px] text-slate-400 rounded-full flex items-center justify-center`}
                 >
                   {d[0]}
                 </div>
@@ -66,14 +66,14 @@ function YearView({ setSelectedDate, setViewMode, selectedDate }) {
                 const isSelected = day.isSame(dayjs(selectedDate), "day");
 
                 let className =
-                  "w-[28px] h-[28px] text-[12px] rounded-full flex items-center justify-center transition-all duration-200 ";
+                  "w-[28px] h-[28px] text-[12px] rounded-full flex items-center justify-center transition-colors duration-150 ";
 
                 if (isToday) {
-                  className += "bg-blue-600 text-white hover:bg-blue-700";
+                  className += "bg-slate-900 text-white font-semibold hover:bg-slate-700";
                 } else if (isSelected) {
-                  className += "bg-blue-100 text-blue-900 hover:bg-blue-200";
+                  className += "bg-slate-200 text-slate-900 font-medium hover:bg-slate-300";
                 } else {
-                  className += "text-gray-800 hover:bg-gray-100 active:bg-blue-50";
+                  className += "text-slate-600 hover:bg-slate-100";
                 }
 
                 return (

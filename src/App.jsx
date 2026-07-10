@@ -4,6 +4,7 @@ import SignUpForm from './loginPage/SignUpForm';
 import AccountActionForm from './loginPage/AccountActionForm';
 import CalendarList from './CalendarList';
 import { getSession, logoutUser } from './services/userService';
+import { DEV_USER, SKIP_AUTH } from './devConfig';
 
 function initialAuthView() {
   const params = new URLSearchParams(window.location.search);
@@ -19,6 +20,12 @@ function App() {
   const [authView, setAuthView] = useState(initialAuthView);
 
   useEffect(() => {
+    if (SKIP_AUTH) {
+      setUser(DEV_USER);
+      setLoading(false);
+      return undefined;
+    }
+
     getSession()
       .then(setUser)
       .catch(() => setUser(null))
@@ -30,6 +37,12 @@ function App() {
   }, []);
 
   async function handleLogout() {
+    if (SKIP_AUTH) {
+      setUser(null);
+      setAuthView({ mode: 'login', token: null });
+      return;
+    }
+
     try {
       await logoutUser();
     } finally {

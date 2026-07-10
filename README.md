@@ -102,6 +102,20 @@ The frontend defaults to `http://localhost:3001` for the API. Copy the root
 `.env.example` to `.env` and set `VITE_API_URL` when using another backend
 origin.
 
+### Frontend-only UI mode
+
+To work on the calendar UI without starting the backend, create a local `.env`
+in the repo root:
+
+```dotenv
+VITE_SKIP_AUTH=true
+VITE_SKIP_CALENDAR_PICKER=true
+```
+
+Then run `npm run dev`. Set either flag back to `false` or remove it to turn
+that page back on. These flags also use in-memory mock calendar data, so any
+events or categories you add reset when the page reloads.
+
 Backend health endpoints:
 
 - `http://localhost:3001/health/live`

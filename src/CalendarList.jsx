@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchCalendars, createCalendar, deleteCalendar } from './services/calendarService';
 import MainApp from './MainApp';
+import { DEV_CALENDAR, SKIP_CALENDAR_PICKER } from './devConfig';
 
 function CalendarList({ onLogout }) {
   const [calendars, setCalendars] = useState([]);
@@ -31,6 +32,10 @@ function CalendarList({ onLogout }) {
   const handleSelectCalendar = (calendar) => {
     setSelectedCalendar(calendar);
   } 
+
+  if (SKIP_CALENDAR_PICKER) {
+    return <MainApp calendarId={DEV_CALENDAR.calendar_id} onLogout={onLogout} />;
+  }
     
   if(selectedCalendar) {
     return <MainApp calendarId={selectedCalendar.calendar_id} onLogout={onLogout} />;

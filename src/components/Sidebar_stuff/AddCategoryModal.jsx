@@ -54,7 +54,7 @@ function AddCategoryModal({
   return createPortal(
     <>
       <div
-        className="fixed inset-0 z-40 bg-black bg-opacity-30"
+        className="fixed inset-0 z-40 bg-slate-900/20"
         onClick={onClose}
       />
       <div
@@ -62,7 +62,7 @@ function AddCategoryModal({
         tabIndex={-1}
       >
         <div
-          className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md relative pointer-events-auto overflow-hidden"
+          className="bg-white p-6 rounded-xl border border-slate-200 shadow-xl w-full max-w-md relative pointer-events-auto overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Sliding container for main and color picker views */}
@@ -77,12 +77,12 @@ function AddCategoryModal({
             {/* MAIN FORM VIEW */}
             <div className="w-1/2 shrink-0 px-5 space-y-4">
               <div className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold">
+                <h2 className="text-base font-semibold text-slate-900">
                   {isEditing ? "Edit Category" : "Add Category"}
                 </h2>
                 <button
                   onClick={onClose}
-                  className="text-gray-500 hover:text-gray-700 text-xl leading-none"
+                  className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 text-xl leading-none transition-colors duration-150"
                 >
                   ×
                 </button>
@@ -94,11 +94,11 @@ function AddCategoryModal({
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
                     Category name
                   </label>
                   <input
-                    className="w-full border p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-200 px-3 py-2 text-sm rounded-md text-slate-900 placeholder-slate-400 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-300/60 focus:border-slate-300"
                     placeholder="Enter category name"
                     value={name}
                     onChange={(e) => {
@@ -110,7 +110,7 @@ function AddCategoryModal({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-slate-600 mb-2">
                     Color
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -120,10 +120,10 @@ function AddCategoryModal({
                         type="button"
                         onClick={() => setColor(c)}
                         style={{ backgroundColor: c }}
-                        className={`w-6 h-6 rounded-full border-2 transition-transform ${
+                        className={`w-6 h-6 rounded-full transition-shadow ${
                           color === c
-                            ? "border-black scale-110"
-                            : "border-gray-300 hover:scale-105"
+                            ? "ring-2 ring-offset-2 ring-slate-900"
+                            : "ring-1 ring-slate-200 hover:ring-slate-400"
                         }`}
                         title={c}
                       />
@@ -147,11 +147,11 @@ function AddCategoryModal({
 
                 {name.trim() && (
                   <div>
-                    <span className="text-xs text-gray-600 block mb-1">
+                    <span className="text-xs text-slate-500 block mb-1">
                       Preview:
                     </span>
                     <span
-                      className="text-xs font-medium px-3 py-1 rounded-2xl inline-block"
+                      className="text-xs font-medium px-3 py-1 rounded-full inline-block"
                       style={{
                         backgroundColor: color,
                         color: getTextColor(color),
@@ -166,13 +166,13 @@ function AddCategoryModal({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 transition-colors text-sm"
+                    className="px-4 py-2 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors text-sm font-medium"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors text-sm"
+                    className="px-4 py-2 rounded-md bg-slate-900 text-white hover:bg-slate-700 transition-colors text-sm font-medium shadow-sm"
                   >
                     {isEditing ? "Save" : "Add"}
                   </button>
