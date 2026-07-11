@@ -47,7 +47,7 @@ function CategoryList({ categories, onAddClick, handleDeleteCategory, toggleVisi
           onClick={onAddClick}
           title="Add category"
           aria-label="Add category"
-          className="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+          className="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-600"
         >
           <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
@@ -63,7 +63,7 @@ function CategoryList({ categories, onAddClick, handleDeleteCategory, toggleVisi
           {categories.map((cat, i) => (
             <div
               key={cat.category_id || i}
-              className="group relative -mx-1 flex items-center gap-1 rounded-md px-1.5 py-1 transition-colors hover:bg-slate-50"
+              className="group relative -mx-1 flex items-center gap-1 rounded-md px-1.5 py-1 transition-colors hover:bg-slate-200/60"
             >
               <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
                 <input

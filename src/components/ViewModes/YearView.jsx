@@ -21,10 +21,10 @@ function YearView({ setSelectedDate, setViewMode, selectedDate }) {
   };
 
   return (
-    <div className="w-full px-4 py-2">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-x-4 gap-y-4">
+    <div className="h-full w-full overflow-y-auto bg-white p-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4">
         {months.map((month, idx) => (
-          <div key={idx} className="rounded p-2">
+          <div key={idx} className="p-2">
             <button
               className="text-sm font-semibold mb-1 text-slate-900 hover:text-slate-500 transition-colors duration-150"
               onClick={ () => {

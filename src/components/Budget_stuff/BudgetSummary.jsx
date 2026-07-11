@@ -93,7 +93,7 @@ const BudgetSummary = ({ events, categories, selectedDate, viewMode }) => {
           {sortedCategories.map(([categoryName, data]) => (
             <div
               key={categoryName}
-              className="-mx-1 flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-slate-50"
+              className="-mx-1 flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-slate-200/60"
             >
               <span
                 className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
@@ -141,7 +141,7 @@ const BudgetSummary = ({ events, categories, selectedDate, viewMode }) => {
             .map(event => (
               <div
                 key={event.id}
-                className="flex items-center justify-between gap-2 rounded-r-md border-l-2 py-1 pl-2 pr-1 transition-colors hover:bg-slate-50"
+                className="flex items-center justify-between gap-2 rounded-r-md border-l-2 py-1 pl-2 pr-1 transition-colors hover:bg-slate-200/60"
                 style={{ borderLeftColor: event.categoryColor }}
               >
                 <div className="min-w-0 flex-1">

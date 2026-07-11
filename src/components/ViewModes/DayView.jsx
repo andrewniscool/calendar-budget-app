@@ -27,6 +27,8 @@ function DayView({
   onDeleteEvent,
   modalPosition,
   setModalPosition,
+  modalAnchorRect,
+  setModalAnchorRect,
   pendingEvent,
   setPendingEvent
 }) {
@@ -70,28 +72,13 @@ function DayView({
     setSelectedDate(dateStr);
     setSelectedHour(hour);
     setEditingEvent(null);
+    const cellRect = e.currentTarget.getBoundingClientRect();
 
     setTimeout(() => {
       const previewEl = document.querySelector('[data-event-id="preview"]');
       if (!previewEl) return;
 
-      const rect = previewEl.getBoundingClientRect();
-      const modalWidth = 300;
-      const modalHeight = 500;
-
-      let top = e.clientY + window.scrollY;
-      let left = e.clientX + window.scrollX + 8;
-
-      if (left + modalWidth > window.innerWidth) {
-        left = rect.left - modalWidth - 8 + window.scrollX;
-      }
-
-      const maxTop = document.documentElement.scrollHeight - modalHeight - 16;
-      if (top > maxTop) {
-        top = maxTop;
-      }
-
-      setModalPosition({ top, left });
+      setModalAnchorRect(previewEl.getBoundingClientRect() || cellRect);
       setIsEventModalOpen(true);
     }, 0);
   }
@@ -106,29 +93,36 @@ function DayView({
 
   return (
     <div className="flex h-full flex-col bg-white">
-      <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2">
-        <span
-          className={`flex h-9 w-9 items-center justify-center rounded-full text-base ${
-            isToday
-              ? "bg-slate-900 font-semibold text-white"
-              : "bg-slate-100 font-medium text-slate-700"
-          }`}
-        >
-          {dayjs(today).date()}
-        </span>
-        <div className="flex flex-col">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-            {dayjs(today).format("dddd")}
+      <div
+        className="sticky top-0 z-20 grid overflow-y-scroll border-b border-slate-200 bg-white scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent"
+        style={{ gridTemplateColumns: `${GUTTER} 1fr`, scrollbarGutter: "stable" }}
+      >
+        <div />
+        <div className={`flex items-center gap-3 border-l border-slate-200/60 px-4 py-2 ${isToday ? "bg-slate-50/60" : ""}`}>
+          <span
+            className={`flex h-9 w-9 items-center justify-center rounded-full text-base ${
+              isToday
+                ? "bg-slate-900 font-semibold text-white"
+                : "bg-slate-100 font-medium text-slate-700"
+            }`}
+          >
+            {dayjs(today).date()}
           </span>
-          <span className="text-sm font-medium leading-tight text-slate-900">
-            {dayjs(today).format("MMMM D, YYYY")}
-          </span>
+          <div className="flex flex-col">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              {dayjs(today).format("dddd")}
+            </span>
+            <span className="text-sm font-medium leading-tight text-slate-900">
+              {dayjs(today).format("MMMM D, YYYY")}
+            </span>
+          </div>
         </div>
       </div>
 
       <div
         ref={redLineContainerRef}
         className="relative flex-1 overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent"
+        style={{ scrollbarGutter: "stable" }}
       >
         <div
           className="grid select-none"
@@ -146,7 +140,7 @@ function DayView({
               <div
                 className={`relative h-16 cursor-pointer border-l border-slate-200/60 transition-colors hover:bg-slate-100/70 ${
                   hour !== 0 ? "border-t" : ""
-                }`}
+                } ${isToday ? "bg-slate-50/60" : ""}`}
                 onClick={(e) => handleTimeClick(hour, e)}
               />
             </Fragment>
@@ -171,6 +165,7 @@ function DayView({
                 onClick={(e) => {
                   e.stopPropagation();
                   setEditingEvent(item.event);
+                  setModalAnchorRect(e.currentTarget.getBoundingClientRect());
                   setIsEventModalOpen(true);
                 }}
               />
@@ -212,6 +207,7 @@ function DayView({
         categories={categories}
         selectedDate={selectedDate}
         selectedHour={selectedHour}
+        anchorRect={modalAnchorRect}
         modalPosition={modalPosition}
         setModalPosition={setModalPosition}
         setPendingEvent={setPendingEvent}

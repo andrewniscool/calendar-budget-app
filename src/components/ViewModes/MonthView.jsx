@@ -22,7 +22,8 @@ function MonthView({
   const nextMonth = currentMonth.add(1, "month");
 
   const [pendingEvent, setPendingEvent] = useState(null);
-  const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
+  const [modalPosition, setModalPosition] = useState(null);
+  const [modalAnchorRect, setModalAnchorRect] = useState(null);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const getCategoryForEvent = (event) =>
@@ -69,29 +70,7 @@ function MonthView({
       budget: 0,
     });
 
-    const rect = e.currentTarget.getBoundingClientRect();
-    const modalWidth = 300;
-    const modalHeight = 500;
-    const padding = 8;
-
-    let left = rect.left + rect.width + padding;
-    let top = rect.top + rect.height / 2 - modalHeight / 2;
-
-    if (left + modalWidth > window.innerWidth) {
-      left = rect.left - modalWidth - padding;
-    }
-    if (top + modalHeight > window.innerHeight) {
-      top = window.innerHeight - modalHeight - padding;
-    }
-
-    const headerOffset = document.querySelector("header")?.offsetHeight || 0;
-    top = Math.max(padding + headerOffset, top);
-
-    setModalPosition({
-      top: top + window.scrollY,
-      left: left + window.scrollX,
-    });
-
+    setModalAnchorRect(e.currentTarget.getBoundingClientRect());
     setIsEventModalOpen(true);
   };
 
@@ -101,7 +80,7 @@ function MonthView({
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
           <div
             key={day}
-            className="py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-slate-400"
+            className="border-l border-slate-200/60 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-slate-400 first:border-l-0"
           >
             {day}
           </div>
@@ -173,6 +152,7 @@ function MonthView({
                       onClick={(e) => {
                         e.stopPropagation();
                         setEditingEvent(event);
+                        setModalAnchorRect(e.currentTarget.getBoundingClientRect());
                         setIsEventModalOpen(true);
                       }}
                     >
@@ -213,6 +193,7 @@ function MonthView({
         categories={categories}
         selectedDate={pendingEvent?.date}
         selectedHour={0}
+        anchorRect={modalAnchorRect}
         modalPosition={modalPosition}
         setModalPosition={setModalPosition}
         setPendingEvent={setPendingEvent}

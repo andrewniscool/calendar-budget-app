@@ -85,7 +85,7 @@ const BudgetDashboard = ({
           onClick={() => setShowSettings(true)}
           aria-label="Budget settings"
           title="Budget settings"
-          className="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+          className="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-600"
         >
           <FiSettings className="h-3.5 w-3.5" />
         </button>
@@ -111,7 +111,7 @@ const BudgetDashboard = ({
                   of ${budgetLimits.overall.toFixed(2)}
                 </span>
               </div>
-              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200/70">
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${BAR_COLORS[overallStatus.status]}`}
                   style={{ width: `${Math.min(overallStatus.percentage, 100)}%` }}

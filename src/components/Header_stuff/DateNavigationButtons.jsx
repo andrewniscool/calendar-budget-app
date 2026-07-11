@@ -96,7 +96,7 @@ function DateNavigationButtons({ viewMode, selectedDate, setSelectedDate }) {
         </svg>
       </button>
 
-      <span className="whitespace-nowrap px-1.5 text-sm font-semibold text-slate-900">
+      <span className="whitespace-nowrap px-1.5 text-lg font-semibold tracking-tight text-slate-900">
         {getCurrentPeriodLabel()}
       </span>
     </div>

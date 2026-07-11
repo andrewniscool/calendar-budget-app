@@ -35,6 +35,8 @@ function WeekView({
   onDeleteEvent,
   modalPosition,
   setModalPosition,
+  modalAnchorRect,
+  setModalAnchorRect,
   pendingEvent,
   setPendingEvent,
   calendarId
@@ -139,23 +141,7 @@ function WeekView({
           const previewEl = document.querySelector('[data-event-id="preview"]');
           if (!previewEl) return;
 
-          const rect = previewEl.getBoundingClientRect();
-          const modalWidth = 300;
-          const modalHeight = 500;
-
-          let top = rect.top + window.scrollY;
-          let left = rect.right + window.scrollX + 8;
-
-          if (left + modalWidth > window.innerWidth) {
-            left = rect.left - modalWidth - 8 + window.scrollX;
-          }
-
-          const maxTop = document.documentElement.scrollHeight - modalHeight - 16;
-          if (top > maxTop) {
-            top = maxTop;
-          }
-
-          setModalPosition({ top, left });
+          setModalAnchorRect(previewEl.getBoundingClientRect());
           setIsEventModalOpen(true);
         }, 0);
       }
@@ -167,9 +153,9 @@ function WeekView({
 
     window.addEventListener("mouseup", handleMouseUp);
     return () => window.removeEventListener("mouseup", handleMouseUp);
-  }, [isDragging, dragStart, dragEnd, setPendingEvent, setSelectedDate, setSelectedHour, setEditingEvent, setModalPosition, setIsEventModalOpen]);
+  }, [isDragging, dragStart, dragEnd, setPendingEvent, setSelectedDate, setSelectedHour, setEditingEvent, setModalAnchorRect, setIsEventModalOpen]);
 
-  function handleTimeCellClick(day, hour) {
+  function handleTimeCellClick(day, hour, e) {
     if (suppressClickRef.current) {
       suppressClickRef.current = false;
       return;
@@ -190,36 +176,20 @@ function WeekView({
     setIsDragging(false);
     setDragStart(null);
     setDragEnd(null);
+    const cellRect = e.currentTarget.getBoundingClientRect();
 
     setTimeout(() => {
       const previewEl = document.querySelector('[data-event-id="preview"]');
       if (!previewEl) return;
 
-      const rect = previewEl.getBoundingClientRect();
-      const modalWidth = 300;
-      const modalHeight = 500;
-
-      let top = rect.top + window.scrollY;
-      let left = rect.right + window.scrollX + 8;
-
-      // Shift left if right edge overflows window
-      if (left + modalWidth > window.innerWidth) {
-        left = rect.left - modalWidth - 8 + window.scrollX;
-      }
-
-      // Clamp top so modal does not overflow viewport bottom
-      const maxTop = window.scrollY + window.innerHeight - modalHeight - 200;
-      if (top > maxTop) {
-        top = maxTop;
-      }
-
-      setModalPosition({ top, left });
+      setModalAnchorRect(previewEl.getBoundingClientRect() || cellRect);
       setIsEventModalOpen(true);
     }, 0);
   }
 
-  function handleEventClick(event) {
+  function handleEventClick(event, e) {
     setEditingEvent(event);
+    setModalAnchorRect(e.currentTarget.getBoundingClientRect());
     setIsEventModalOpen(true);
     setPendingEvent(false);
   }
@@ -236,8 +206,11 @@ function WeekView({
   return (
     <div className="flex h-full flex-col bg-white">
       <div
-        className="sticky top-0 z-20 grid border-b border-slate-200 bg-white"
-        style={{ gridTemplateColumns: `${GUTTER} repeat(7, minmax(0, 1fr))` }}
+        className="sticky top-0 z-20 grid overflow-y-scroll border-b border-slate-200 bg-white scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent"
+        style={{
+          gridTemplateColumns: `${GUTTER} repeat(7, minmax(0, 1fr))`,
+          scrollbarGutter: "stable",
+        }}
       >
         <div />
         {weekDates.map((date, index) => {
@@ -245,7 +218,12 @@ function WeekView({
           const isSelectedHeader =
             !isTodayHeader && dayjs(date).isSame(dayjs(selectedDate), "day");
           return (
-            <div key={index} className="flex min-w-0 items-center justify-center gap-1.5 py-2">
+            <div
+              key={index}
+              className={`flex min-w-0 items-center justify-center gap-1.5 border-l border-slate-200/60 py-2 ${
+                isTodayHeader ? "bg-slate-50/60" : ""
+              }`}
+            >
               <span
                 className={`text-[11px] font-semibold uppercase tracking-wider ${
                   isTodayHeader ? "text-slate-900" : "text-slate-400"
@@ -272,6 +250,7 @@ function WeekView({
       <div
         ref={redLineContainerRef}
         className="relative flex-1 overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent"
+        style={{ scrollbarGutter: "stable" }}
       >
         <div
           className="grid select-none"
@@ -350,7 +329,7 @@ function WeekView({
                       rowHeight={rowHeight}
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleEventClick(item.event);
+                        handleEventClick(item.event, e);
                       }}
                     />
                   );
@@ -392,6 +371,7 @@ function WeekView({
         categories={categories}
         selectedDate={pendingEvent?.date || selectedDate}
         selectedHour={selectedHour}
+        anchorRect={modalAnchorRect}
         modalPosition={modalPosition}
         setModalPosition={setModalPosition}
         setPendingEvent={setPendingEvent}

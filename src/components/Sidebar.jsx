@@ -18,13 +18,13 @@ function Sidebar({
 }) {
   return (
     <aside
-      className="sticky top-0 flex h-full w-64 flex-col overflow-y-auto border-r border-slate-200 bg-white scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent"
+      className="sticky top-0 flex h-full w-64 flex-col overflow-y-auto border-r border-slate-200 bg-slate-50 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent"
       style={{ scrollbarGutter: "stable" }}
     >
       <div className="p-3">
         <button
           onClick={onAddEventClick}
-          className="flex w-full items-center justify-center gap-1.5 rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1"
+          className="flex w-full items-center justify-center gap-1.5 rounded-md bg-slate-900 px-3 py-2 text-[13px] font-medium text-white transition-colors hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1"
         >
           <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
@@ -44,7 +44,7 @@ function Sidebar({
         />
       </div>
 
-      <div className="border-t border-slate-100 px-3 py-3">
+      <div className="border-t border-slate-200/60 px-3 py-3">
         <BudgetDashboard
           events={events}
           categories={categories}
@@ -55,7 +55,7 @@ function Sidebar({
         />
       </div>
 
-      <div className="border-t border-slate-100 px-3 py-3">
+      <div className="border-t border-slate-200/60 px-3 py-3">
         <CategoryManager
           categories={categories}
           setCategories={setCategories}
