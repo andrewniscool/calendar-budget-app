@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef, useLayoutEffect } from "react";
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
+import { FiCalendar, FiClock, FiDollarSign, FiEdit2, FiTag, FiTrash2, FiX } from "react-icons/fi";
 import dayjs from "dayjs";
 
 const NO_CATEGORY_COLOR = "#cbd5e1";
@@ -427,7 +428,11 @@ const EventModal = forwardRef(function EventModal({
   const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState(editingEvent?.date || new Date().toISOString().split("T")[0]);
   const [renderPos, setRenderPos] = useState(null);
-  const [modalMode, setModalMode] = useState(editingEvent ? "details" : "form");
+  const [isEditingForm, setIsEditingForm] = useState(false);
+  // Details is the synchronous default for existing events. The explicit
+  // flag only becomes true after the user presses Edit, avoiding a stale form
+  // frame when reopening an event.
+  const modalMode = editingEvent && !isEditingForm ? "details" : "form";
 
   useImperativeHandle(ref, () => ({
     getSize: () => {
@@ -447,34 +452,38 @@ const EventModal = forwardRef(function EventModal({
       return;
     }
 
-    const modalRect = {
-      width: el.offsetWidth,
-      height: el.offsetHeight,
-    };
     const fallbackAnchor = clickCoords
       ? { top: clickCoords.y, left: clickCoords.x, right: clickCoords.x, bottom: clickCoords.y, width: 0, height: 0 }
       : null;
     const anchor = anchorRect ?? fallbackAnchor;
 
-    if (anchor) {
-      setRenderPos(positionNearAnchor(anchor, modalRect));
-      return;
-    }
+    const updatePosition = () => {
+      const modalRect = { width: el.offsetWidth, height: el.offsetHeight };
 
-    const base = modalPosition ?? {
-      top: window.innerHeight / 2 - modalRect.height / 2,
-      left: window.innerWidth / 2 - modalRect.width / 2,
+      if (anchor) {
+        setRenderPos(positionNearAnchor(anchor, modalRect));
+        return;
+      }
+
+      const base = modalPosition ?? {
+        top: window.innerHeight / 2 - modalRect.height / 2,
+        left: window.innerWidth / 2 - modalRect.width / 2,
+      };
+
+      setRenderPos({
+        top: clamp(base.top, MODAL_PADDING, Math.max(window.innerHeight - modalRect.height - MODAL_PADDING, MODAL_PADDING)),
+        left: clamp(base.left, MODAL_PADDING, Math.max(window.innerWidth - modalRect.width - MODAL_PADDING, MODAL_PADDING)),
+      });
     };
 
-    setRenderPos({
-      top: clamp(base.top, MODAL_PADDING, Math.max(window.innerHeight - modalRect.height - MODAL_PADDING, MODAL_PADDING)),
-      left: clamp(base.left, MODAL_PADDING, Math.max(window.innerWidth - modalRect.width - MODAL_PADDING, MODAL_PADDING)),
-    });
-  }, [isOpen, anchorRect, clickCoords, modalPosition]);
+    updatePosition();
+    const observer = new ResizeObserver(updatePosition);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isOpen, modalMode, anchorRect, clickCoords, modalPosition]);
 
   useEffect(() => {
     if (isOpen) {
-      setModalMode(editingEvent ? "details" : "form");
       if (editingEvent) {
         setDate(new Date(editingEvent.date).toISOString().split("T")[0]);
         setTitle(editingEvent.title || "");
@@ -513,21 +522,28 @@ const EventModal = forwardRef(function EventModal({
     }
   }, [isOpen, setPendingEvent]);
 
+  // Reset the visual mode before closing so the next open never animates from
+  // the previous form/details state.
+  function closeModal() {
+    setIsEditingForm(false);
+    setIsOpen(false);
+  }
+
   function handleSubmit(e) {
     e.preventDefault();
     onSave({ title, date, budget, timeStart, timeEnd, categoryId });
-    setIsOpen(false);
+    closeModal();
   }
 
   function handleDelete() {
     if (editingEvent) {
       onDelete(editingEvent);
-      setIsOpen(false);
+      closeModal();
     }
   }
 
   function handleEdit() {
-    setModalMode("form");
+    setIsEditingForm(true);
   }
 
   // Moving the start keeps the event duration, so the end can never land
@@ -554,19 +570,19 @@ const EventModal = forwardRef(function EventModal({
           {/* Backdrop without black or blur */}
           <motion.div
             className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
+            onClick={closeModal}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
           />
 
           <motion.div
             ref={modalRef}
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            transition={{ duration: 0.3, type: "spring", stiffness: 400, damping: 30 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
             className="fixed z-50 max-h-[calc(100vh-24px)] w-[min(340px,calc(100vw-24px))] overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-xl shadow-slate-900/5"
             style={{
               top: renderPos?.top ?? MODAL_PADDING,
@@ -576,7 +592,7 @@ const EventModal = forwardRef(function EventModal({
           >
             <form onSubmit={handleSubmit}>
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2.5">
                 <div className="flex min-w-0 items-center gap-2">
                   <span
                     className="h-2.5 w-2.5 shrink-0 rounded-[3px] transition-colors"
@@ -586,16 +602,21 @@ const EventModal = forwardRef(function EventModal({
                     {modalMode === "details" ? "Event details" : editingEvent ? "Edit event" : "New event"}
                   </h2>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  aria-label="Close"
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                <div className="flex items-center gap-0.5">
+                  {modalMode === "details" && editingEvent && (
+                    <>
+                      <button type="button" onClick={handleEdit} aria-label="Edit event" title="Edit event" className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900">
+                        <FiEdit2 className="h-[17px] w-[17px]" />
+                      </button>
+                      <button type="button" onClick={handleDelete} aria-label="Delete event" title="Delete event" className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600">
+                        <FiTrash2 className="h-[17px] w-[17px]" />
+                      </button>
+                    </>
+                  )}
+                  <button type="button" onClick={closeModal} aria-label="Close" title="Close" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900">
+                    <FiX className="h-[19px] w-[19px]" />
+                  </button>
+                </div>
               </div>
 
               <AnimatePresence initial={false} mode="wait">
@@ -606,35 +627,22 @@ const EventModal = forwardRef(function EventModal({
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 8 }}
                     transition={{ duration: 0.16 }}
-                    className="space-y-3.5 px-4 py-4"
+                    className="space-y-3 px-4 py-3.5"
                   >
-                    <div>
-                      <FieldLabel>Title</FieldLabel>
-                      <p className="text-base font-semibold text-slate-900">{editingEvent.title || "Untitled event"}</p>
+                    <div className="flex items-start gap-3">
+                      <span className="mt-1 h-3.5 w-3.5 shrink-0 rounded-[4px]" style={{ backgroundColor: activeColor }} />
+                      <div className="min-w-0">
+                        <p className="truncate text-lg font-semibold tracking-tight text-slate-900">{editingEvent.title || "Untitled event"}</p>
+                        <p className="mt-0.5 text-sm text-slate-600">
+                          {dayjs(editingEvent.date).format("dddd, MMMM D")} · {timeLabel(toMinutes(editingEvent.timeStart))} – {timeLabel(toMinutes(editingEvent.timeEnd))}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <FieldLabel>Date</FieldLabel>
-                      <p className="text-sm text-slate-700">{dayjs(editingEvent.date).format("dddd, MMMM D, YYYY")}</p>
-                    </div>
-                    <div>
-                      <FieldLabel>Time</FieldLabel>
-                      <p className="text-sm tabular-nums text-slate-700">
-                        {timeLabel(toMinutes(editingEvent.timeStart))} – {timeLabel(toMinutes(editingEvent.timeEnd))}
-                      </p>
-                    </div>
-                    <div>
-                      <FieldLabel>Category</FieldLabel>
-                      <p className="flex items-center gap-2 text-sm text-slate-700">
-                        <span
-                          className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
-                          style={{ backgroundColor: activeColor }}
-                        />
-                        {categories.find((category) => String(category.category_id) === String(editingEvent.categoryId))?.name || "No category"}
-                      </p>
-                    </div>
-                    <div>
-                      <FieldLabel>Budget</FieldLabel>
-                      <p className="text-sm tabular-nums text-slate-700">${Number(editingEvent.budget || 0).toFixed(2)}</p>
+                    <div className="space-y-2 border-t border-slate-100 pt-3 text-sm text-slate-700">
+                      <p className="flex items-center gap-2.5"><FiCalendar className="h-4 w-4 shrink-0 text-slate-400" />{dayjs(editingEvent.date).format("dddd, MMMM D, YYYY")}</p>
+                      <p className="flex items-center gap-2.5"><FiClock className="h-4 w-4 shrink-0 text-slate-400" /><span className="tabular-nums">{timeLabel(toMinutes(editingEvent.timeStart))} – {timeLabel(toMinutes(editingEvent.timeEnd))}</span></p>
+                      <p className="flex items-center gap-2.5"><FiTag className="h-4 w-4 shrink-0 text-slate-400" />{categories.find((category) => String(category.category_id) === String(editingEvent.categoryId))?.name || "No category"}</p>
+                      <p className="flex items-center gap-2.5"><FiDollarSign className="h-4 w-4 shrink-0 text-slate-400" /><span className="tabular-nums">${Number(editingEvent.budget || 0).toFixed(2)} budget</span></p>
                     </div>
                   </motion.div>
                 ) : (
@@ -713,16 +721,8 @@ const EventModal = forwardRef(function EventModal({
               </AnimatePresence>
 
               {/* Actions */}
-              <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
-                {modalMode === "details" && editingEvent ? (
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    className="rounded-md px-2.5 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
-                  >
-                    Delete
-                  </button>
-                ) : editingEvent ? (
+              {modalMode !== "details" && <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
+                {editingEvent ? (
                   <button
                     type="button"
                     onClick={handleDelete}
@@ -734,42 +734,21 @@ const EventModal = forwardRef(function EventModal({
                   <span />
                 )}
                 <div className="flex items-center gap-2">
-                  {modalMode === "details" && editingEvent ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setIsOpen(false)}
-                        className="rounded-md border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-                      >
-                        Close
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleEdit}
-                        className="rounded-md bg-slate-900 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-700"
-                      >
-                        Edit
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setIsOpen(false)}
-                        className="rounded-md border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="rounded-md bg-slate-900 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-700"
-                      >
-                        {editingEvent ? "Save changes" : "Create event"}
-                      </button>
-                    </>
-                  )}
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="rounded-md border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-md bg-slate-900 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-700"
+                  >
+                    {editingEvent ? "Save changes" : "Create event"}
+                  </button>
                 </div>
-              </div>
+              </div>}
             </form>
           </motion.div>
         </>
