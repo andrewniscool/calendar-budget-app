@@ -1,17 +1,12 @@
+import { withTransaction } from '../db.js';
+
 export function createUserRepository(db) {
-  async function withTransaction(work) {
-    const client = await db.connect();
-    try {
-      await client.query('BEGIN');
-      const result = await work(client);
-      await client.query('COMMIT');
-      return result;
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
+  async function enqueueMail(client, user, type, token) {
+    await client.query(
+      `INSERT INTO mail_outbox (type, recipient, payload)
+       VALUES ($1, $2, $3::jsonb)`,
+      [type, user.email, JSON.stringify({ token })]
+    );
   }
 
   const userSelect = `
@@ -36,25 +31,23 @@ export function createUserRepository(db) {
       return result.rows[0];
     },
 
-    async create(username, email, hashedPassword) {
-      const result = await db.query(
-        `INSERT INTO users (username, email, password)
-         VALUES ($1, LOWER($2), $3)
-         RETURNING id, username, email, email_verified_at`,
-        [username, email, hashedPassword]
-      );
-      return result.rows[0];
-    },
-
-    async attachLegacyEmail(userId, email) {
-      const result = await db.query(
-        `UPDATE users
-         SET email = LOWER($1), email_verified_at = NULL, updated_at = CURRENT_TIMESTAMP
-         WHERE id = $2 AND email IS NULL
-         RETURNING id, username, email, email_verified_at`,
-        [email, userId]
-      );
-      return result.rows[0];
+    async createWithVerification({ username, email, hashedPassword, tokenHash, token, expiresAt }) {
+      return withTransaction(db, async (client) => {
+        const result = await client.query(
+          `INSERT INTO users (username, email, password)
+           VALUES ($1, LOWER($2), $3)
+           RETURNING id, username, email, email_verified_at`,
+          [username, email, hashedPassword]
+        );
+        const user = result.rows[0];
+        await client.query(
+          `INSERT INTO account_tokens (user_id, type, token_hash, expires_at)
+           VALUES ($1, 'email_verification', $2, $3)`,
+          [user.id, tokenHash, expiresAt]
+        );
+        await enqueueMail(client, user, 'email_verification', token);
+        return user;
+      });
     },
 
     async recordLoginFailure(userId, maxAttempts, lockoutMinutes) {
@@ -83,26 +76,46 @@ export function createUserRepository(db) {
       );
     },
 
-    async createAccountToken(userId, type, tokenHash, expiresAt) {
-      return withTransaction(async (client) => {
+    async issueAccountTokenWithEmail(user, type, tokenHash, token, expiresAt) {
+      return withTransaction(db, async (client) => {
+        await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [user.id]);
+        const recent = await client.query(
+          `SELECT 1 FROM account_tokens
+           WHERE user_id = $1 AND type = $2
+             AND created_at > CURRENT_TIMESTAMP - INTERVAL '5 minutes'
+           LIMIT 1`,
+          [user.id, type]
+        );
+        if (recent.rowCount) return { queued: false };
+        await client.query(
+          `UPDATE mail_outbox
+           SET failed_at = CURRENT_TIMESTAMP,
+               payload = '{}'::jsonb,
+               last_error = 'Superseded by a newer account token',
+               updated_at = CURRENT_TIMESTAMP
+           WHERE recipient = $1 AND type = $2
+             AND sent_at IS NULL AND failed_at IS NULL`,
+          [user.email, type]
+        );
         await client.query(
           `UPDATE account_tokens
            SET consumed_at = CURRENT_TIMESTAMP
            WHERE user_id = $1 AND type = $2 AND consumed_at IS NULL`,
-          [userId, type]
+          [user.id, type]
         );
         const result = await client.query(
           `INSERT INTO account_tokens (user_id, type, token_hash, expires_at)
            VALUES ($1, $2, $3, $4)
            RETURNING id`,
-          [userId, type, tokenHash, expiresAt]
+          [user.id, type, tokenHash, expiresAt]
         );
-        return result.rows[0];
+        await enqueueMail(client, user, type, token);
+        return { ...result.rows[0], queued: true };
       });
     },
 
     async consumeVerificationToken(tokenHash) {
-      return withTransaction(async (client) => {
+      return withTransaction(db, async (client) => {
         const token = await client.query(
           `SELECT id, user_id
            FROM account_tokens
@@ -131,7 +144,7 @@ export function createUserRepository(db) {
     },
 
     async consumeResetToken(tokenHash, hashedPassword) {
-      return withTransaction(async (client) => {
+      return withTransaction(db, async (client) => {
         const token = await client.query(
           `SELECT id, user_id
            FROM account_tokens
@@ -179,7 +192,7 @@ export function createUserRepository(db) {
     },
 
     async rotateRefreshToken(currentHash, replacement) {
-      return withTransaction(async (client) => {
+      return withTransaction(db, async (client) => {
         const current = await client.query(
           `SELECT rt.*, u.username, u.email, u.email_verified_at, u.auth_version
            FROM refresh_tokens rt
@@ -231,7 +244,7 @@ export function createUserRepository(db) {
     },
 
     async revokeRefreshFamily(tokenHash) {
-      return withTransaction(async (client) => {
+      return withTransaction(db, async (client) => {
         const current = await client.query(
           'SELECT family_id FROM refresh_tokens WHERE token_hash = $1 FOR UPDATE',
           [tokenHash]

@@ -1,26 +1,15 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import dayjs from "dayjs";
 import EventModal from "../EventModal";
+import EventBlock from "./EventBlock";
+import { getBlockOffsets, layoutDayEvents } from "./timeGrid";
 
-function getMinutes(timeStr) {
-  if (!timeStr || !timeStr.includes(":")) return 0;
-  const [h, m] = timeStr.split(":").map(Number);
-  return h * 60 + m;
-}
+const GUTTER = "64px";
 
 function formatHour(hour) {
   const suffix = hour >= 12 ? "PM" : "AM";
   const standard = hour % 12 === 0 ? 12 : hour % 12;
   return `${standard} ${suffix}`;
-}
-
-function getTextColor(bgColor) {
-  const hex = bgColor.replace("#", "");
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.6 ? "#000000" : "#FFFFFF";
 }
 
 function DayView({
@@ -38,6 +27,8 @@ function DayView({
   onDeleteEvent,
   modalPosition,
   setModalPosition,
+  modalAnchorRect,
+  setModalAnchorRect,
   pendingEvent,
   setPendingEvent
 }) {
@@ -48,7 +39,7 @@ function DayView({
   const redLineContainerRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(dayjs());
   const hours = Array.from({ length: 24 }, (_, hour) => hour);
-  const rowHeight = 56;
+  const rowHeight = 64;
 
   const isToday = dayjs().isSame(dayjs(selectedDate), "day");
   const totalMinutes = currentTime.hour() * 60 + currentTime.minute();
@@ -81,125 +72,130 @@ function DayView({
     setSelectedDate(dateStr);
     setSelectedHour(hour);
     setEditingEvent(null);
+    const cellRect = e.currentTarget.getBoundingClientRect();
 
     setTimeout(() => {
       const previewEl = document.querySelector('[data-event-id="preview"]');
       if (!previewEl) return;
 
-      const rect = previewEl.getBoundingClientRect();
-      const modalWidth = 300;
-      const modalHeight = 500;
-
-      let top = e.clientY + window.scrollY;
-      let left = e.clientX + window.scrollX + 8;
-      console.log("Clicked at:", e.clientX, e.clientY);
-
-      if (left + modalWidth > window.innerWidth) {
-        left = rect.left - modalWidth - 8 + window.scrollX;
-      }
-
-      const maxTop = document.documentElement.scrollHeight - modalHeight - 16;
-      if (top > maxTop) {
-        top = maxTop;
-      }
-
-      setModalPosition({ top, left });
+      setModalAnchorRect(previewEl.getBoundingClientRect() || cellRect);
       setIsEventModalOpen(true);
     }, 0);
   }
 
+  const dayItems = layoutDayEvents(
+    events.filter(
+      (event) =>
+        dayjs(event.date).isSame(dayjs(today), "day") &&
+        getCategoryForEvent(event)?.visible !== false
+    )
+  );
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="text-center py-2 font-medium text-lg bg-white sticky top-0 z-10">
-        {dayjs(today).format("dddd, MMMM D")}
+    <div className="flex h-full flex-col bg-white">
+      <div
+        className="sticky top-0 z-20 grid overflow-y-scroll border-b border-slate-200 bg-white scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent"
+        style={{ gridTemplateColumns: `${GUTTER} 1fr`, scrollbarGutter: "stable" }}
+      >
+        <div />
+        <div className={`flex items-center gap-3 border-l border-slate-200/60 px-4 py-2 ${isToday ? "bg-slate-50/60" : ""}`}>
+          <span
+            className={`flex h-9 w-9 items-center justify-center rounded-full text-base ${
+              isToday
+                ? "bg-slate-900 font-semibold text-white"
+                : "bg-slate-100 font-medium text-slate-700"
+            }`}
+          >
+            {dayjs(today).date()}
+          </span>
+          <div className="flex flex-col">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              {dayjs(today).format("dddd")}
+            </span>
+            <span className="text-sm font-medium leading-tight text-slate-900">
+              {dayjs(today).format("MMMM D, YYYY")}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div ref={redLineContainerRef} className="overflow-y-auto flex-1 relative">
-        <div className="grid grid-cols-[80px_1fr]">
+      <div
+        ref={redLineContainerRef}
+        className="relative flex-1 overflow-y-auto bg-white scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent"
+        style={{ scrollbarGutter: "stable" }}
+      >
+        <div
+          className="grid select-none"
+          style={{ gridTemplateColumns: `${GUTTER} 1fr` }}
+        >
           {hours.map((hour) => (
             <Fragment key={hour}>
-              <div className="border-t border-l pr-2 text-xs text-gray-500 bg-gray-50 h-14 flex items-start pt-1 justify-end">
-                {formatHour(hour)}
+              <div className="relative h-16 bg-white">
+                {hour !== 0 && (
+                  <span className="absolute right-2.5 top-0 -translate-y-1/2 text-[11px] font-medium tabular-nums text-slate-400">
+                    {formatHour(hour)}
+                  </span>
+                )}
               </div>
               <div
-                key={`${hour}`}
-                className="border-t border-l relative h-14 cursor-pointer"
+                className={`relative h-16 cursor-pointer border-l border-slate-200/60 transition-colors hover:bg-slate-100/70 ${
+                  hour !== 0 ? "border-t" : ""
+                } ${isToday ? "bg-slate-50/60" : ""}`}
                 onClick={(e) => handleTimeClick(hour, e)}
-              >
-                {events
-                  .filter(
-                    (event) =>
-                      dayjs(event.date).isSame(dayjs(today), "day") &&
-                      getMinutes(event.timeStart) >= hour * 60 &&
-                      getMinutes(event.timeStart) < (hour + 1) * 60 &&
-                      getCategoryForEvent(event)?.visible !== false
-                  )
-                  .map((event) => {
-                    const start = getMinutes(event.timeStart);
-                    const end = getMinutes(event.timeEnd);
-                    const top = ((start - hour * 60) / 60) * 100;
-                    const height = ((end - start) / 60) * 100;
-                    const bg = event.categoryColor || getCategoryForEvent(event)?.color || "#e0e0e0";
-
-                    return (
-                      <div
-                        key={event.id}
-                        data-event-id={event.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingEvent(event);
-                          setIsEventModalOpen(true);
-                        }}
-                        className="absolute px-2 py-1 rounded text-xs font-medium shadow-sm cursor-pointer z-10"
-                        style={{
-                          top: `${top}%`,
-                          height: `${height}%`,
-                          left: "4px",
-                          width: "calc(100% - 20px)",
-                          backgroundColor: bg,
-                          color: getTextColor(bg),
-                        }}
-                      >
-                        {event.title} {event.budget > 0 && `($${event.budget})`}
-                      </div>
-                    );
-                  })}
-              </div>
+              />
             </Fragment>
           ))}
         </div>
 
-        {/* Red Line for current time */}
+        <div
+          className="pointer-events-none absolute right-0 top-0"
+          style={{ left: GUTTER, height: `${24 * rowHeight}px` }}
+        >
+          {dayItems.map((item) => {
+            const color =
+              item.event.categoryColor ||
+              getCategoryForEvent(item.event)?.color ||
+              "#94a3b8";
+            return (
+              <EventBlock
+                key={item.event.id}
+                item={item}
+                color={color}
+                rowHeight={rowHeight}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingEvent(item.event);
+                  setModalAnchorRect(e.currentTarget.getBoundingClientRect());
+                  setIsEventModalOpen(true);
+                }}
+              />
+            );
+          })}
+
+          {/* Preview pending event */}
+          {pendingEvent && dayjs(pendingEvent.date).isSame(dayjs(today), "day") && (
+            <div
+              data-event-id="preview"
+              className="pointer-events-auto absolute left-[2px] right-[6px] z-20 rounded-md border border-dashed border-slate-400 bg-white/90 px-2 py-1 text-xs font-medium text-slate-500 shadow-sm"
+              style={getBlockOffsets(pendingEvent.timeStart, pendingEvent.timeEnd, rowHeight)}
+            >
+              New event
+            </div>
+          )}
+        </div>
+
+        {/* Current time indicator */}
         {isToday && (
           <div
-            className="absolute z-30 pointer-events-none"
-            style={{ top: `${topPx}px`, left: "80px", right: "0px" }}
+            className="pointer-events-none absolute right-0 z-30"
+            style={{ top: `${topPx}px`, left: GUTTER }}
           >
-            <div className="h-[2px] bg-red-500 w-full" />
+            <div className="relative">
+              <div className="absolute -left-[3px] -top-[3px] h-2 w-2 rounded-full bg-rose-500" />
+              <div className="h-[2px] w-full bg-rose-500" />
+            </div>
           </div>
         )}
-
-        {/* Preview pending event */}
-        {pendingEvent &&
-          dayjs(pendingEvent.date).isSame(dayjs(today), "day") && (() => {
-            const startMinutes = getMinutes(pendingEvent.timeStart);
-            const endMinutes = getMinutes(pendingEvent.timeEnd);
-            const top = (startMinutes / 60) * rowHeight;
-            const height = ((endMinutes - startMinutes) / 60) * rowHeight;
-
-            return (
-              <div
-                data-event-id="preview"
-                className="absolute left-[82px] right-[2px] px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-900 border border-blue-400 opacity-70 z-10"
-                style={{
-                  top: `${top}px`,
-                  height: `${height}px`,
-                }}
-              >
-                New Event
-              </div>
-            );
-          })()}
       </div>
 
       <EventModal
@@ -211,6 +207,7 @@ function DayView({
         categories={categories}
         selectedDate={selectedDate}
         selectedHour={selectedHour}
+        anchorRect={modalAnchorRect}
         modalPosition={modalPosition}
         setModalPosition={setModalPosition}
         setPendingEvent={setPendingEvent}

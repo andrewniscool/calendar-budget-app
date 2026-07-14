@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import dayjs from "dayjs";
 import EventModal from "../EventModal";
 
+const MAX_VISIBLE_EVENTS = 3;
+
 function MonthView({
   setViewMode,
   setSelectedDate,
@@ -20,7 +22,8 @@ function MonthView({
   const nextMonth = currentMonth.add(1, "month");
 
   const [pendingEvent, setPendingEvent] = useState(null);
-  const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
+  const [modalPosition, setModalPosition] = useState(null);
+  const [modalAnchorRect, setModalAnchorRect] = useState(null);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const getCategoryForEvent = (event) =>
@@ -43,136 +46,135 @@ function MonthView({
     });
   }
 
+  // Pad to at least 5 full weeks, always ending on a complete week row.
   let i = 1;
-  while (days.length < 35) {
+  while (days.length < 35 || days.length % 7 !== 0) {
     days.push({
       date: dayjs(nextMonth).date(i++),
       isCurrentMonth: false,
     });
   }
+  const weeks = days.length / 7;
 
   const handleDayCellClick = (e, entry) => {
     e.stopPropagation();
     setEditingEvent(null);
 
     const dateStr = entry.date.format("YYYY-MM-DD");
-      setPendingEvent({
-        title: "",
-        date: dateStr,
-        timeStart: "00:00",
-        timeEnd: "01:00",
-        categoryId: "",
-        budget: 0,
-      });
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const modalWidth = 300;
-    const modalHeight = 500;
-    const padding = 8;
-
-    let left = rect.left + rect.width + padding;
-    let top = rect.top + rect.height / 2 - modalHeight / 2;
-
-    if (left + modalWidth > window.innerWidth) {
-      left = rect.left - modalWidth - padding;
-    }
-    if (top + modalHeight > window.innerHeight) {
-      top = window.innerHeight - modalHeight - padding;
-    }
-
-    const headerOffset = document.querySelector("header")?.offsetHeight || 0;
-    top = Math.max(padding + headerOffset, top);
-
-    setModalPosition({
-      top: top + window.scrollY,
-      left: left + window.scrollX,
+    setPendingEvent({
+      title: "",
+      date: dateStr,
+      timeStart: "00:00",
+      timeEnd: "01:00",
+      categoryId: "",
+      budget: 0,
     });
 
+    setModalAnchorRect(e.currentTarget.getBoundingClientRect());
     setIsEventModalOpen(true);
   };
 
   return (
-    <div className="p-4">
-      <div className="grid grid-cols-7 gap-1 text-center text-gray-500 mb-1 text-sm">
+    <div className="flex h-full flex-col bg-white">
+      <div className="grid grid-cols-7 border-b border-slate-200">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-          <div key={day} className="font-medium">
+          <div
+            key={day}
+            className="border-l border-slate-200/60 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-slate-400 first:border-l-0"
+          >
             {day}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 grid-rows-5 w-full h-[calc(100vh-140px)]">
+      <div
+        className="grid min-h-0 flex-1 grid-cols-7"
+        style={{ gridTemplateRows: `repeat(${weeks}, minmax(0, 1fr))` }}
+      >
         {days.map((entry, index) => {
           const isToday = entry.date.isSame(dayjs(), "day");
-          const isSelected = entry.date.isSame(dayjs(selectedDate), "day");
+          const isSelected =
+            !isToday && entry.date.isSame(dayjs(selectedDate), "day");
           const isPending = pendingEvent?.date === entry.date.format("YYYY-MM-DD");
 
-          const dayEvents = events
-            .filter(
-              (event) =>
-                dayjs(event.date).isSame(entry.date, "day") &&
-                getCategoryForEvent(event)?.visible !== false
-            )
-            .slice(0, 3);
+          const dayEvents = events.filter(
+            (event) =>
+              dayjs(event.date).isSame(entry.date, "day") &&
+              getCategoryForEvent(event)?.visible !== false
+          );
+          const visibleEvents = dayEvents.slice(0, MAX_VISIBLE_EVENTS);
+          const hiddenCount = dayEvents.length - visibleEvents.length;
 
           return (
             <div
               key={index}
               onClick={(e) => handleDayCellClick(e, entry)}
-              className={`border border-gray-200 relative text-xs p-1 cursor-pointer flex flex-col justify-start items-stretch overflow-hidden ${
-                entry.isCurrentMonth ? "text-gray-800" : "text-gray-400"
-              }`}
+              className={`relative flex min-w-0 cursor-pointer flex-col gap-0.5 overflow-hidden border-b border-r border-slate-200/60 px-1.5 py-1 transition-colors hover:bg-slate-50 ${
+                entry.isCurrentMonth ? "bg-white" : "bg-slate-50/60"
+              } ${isPending ? "bg-slate-50 ring-2 ring-inset ring-slate-300" : ""}`}
             >
-              <div className="flex flex-col items-center justify-center relative w-full">
+              <div className="flex">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedDate(entry.date);
                     setViewMode("day");
                   }}
-                  className={`leading-tight rounded-full px-2 py-1 text-xs transition-all duration-200 ${
+                  className={`flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs transition-colors duration-150 ${
                     isToday
-                      ? "bg-blue-600 text-white hover:bg-blue-700"
+                      ? "bg-slate-900 font-semibold text-white hover:bg-slate-700"
                       : isSelected
-                      ? "bg-blue-100 text-blue-900 hover:bg-blue-200"
-                      : "text-gray-800 hover:bg-gray-100"
+                      ? "bg-slate-200 font-medium text-slate-900 hover:bg-slate-300"
+                      : entry.isCurrentMonth
+                      ? "font-medium text-slate-700 hover:bg-slate-100"
+                      : "font-medium text-slate-400 hover:bg-slate-100"
                   }`}
                 >
-                  {entry.date.date() === 1 ? (
-                    <div className="flex flex-col items-center text-[10px] uppercase leading-3">
-                      <div>{entry.date.format("MMM")}</div>
-                      <div className="text-xs">{entry.date.date()}</div>
-                    </div>
-                  ) : (
-                    entry.date.date()
-                  )}
+                  {entry.date.date() === 1
+                    ? entry.date.format("MMM D")
+                    : entry.date.date()}
                 </button>
-
-                <div className="mt-1 w-full space-y-0.5 overflow-hidden">
-                  {dayEvents.map((event) => {
-                    const bg = event.categoryColor || getCategoryForEvent(event)?.color || "#e0e0e0";
-                    return (
-                      <div
-                        key={event.id}
-                        className="truncate text-[10px] px-1 py-0.5 rounded text-white cursor-pointer"
-                        style={{ backgroundColor: bg }}
-                        title={event.title}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingEvent(event);
-                          setIsEventModalOpen(true);
-                        }}
-                      >
-                        {event.title}
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
 
-              {isPending && (
-                <div className="absolute bottom-1 left-2 right-2 h-1 bg-blue-500 rounded-sm"></div>
-              )}
+              <div className="min-w-0 space-y-0.5 overflow-hidden">
+                {visibleEvents.map((event) => {
+                  const color =
+                    event.categoryColor ||
+                    getCategoryForEvent(event)?.color ||
+                    "#94a3b8";
+                  return (
+                    <div
+                      key={event.id}
+                      className={`flex min-w-0 cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-[11px] font-medium hover:bg-slate-100 ${
+                        entry.isCurrentMonth ? "text-slate-700" : "text-slate-400"
+                      }`}
+                      title={event.title}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingEvent(event);
+                        setModalAnchorRect(e.currentTarget.getBoundingClientRect());
+                        setIsEventModalOpen(true);
+                      }}
+                    >
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-[3px]"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="truncate">{event.title}</span>
+                      {event.budget > 0 && (
+                        <span className="ml-auto shrink-0 text-[10px] tabular-nums text-slate-400">
+                          ${event.budget}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+                {hiddenCount > 0 && (
+                  <div className="px-1 text-[11px] font-medium text-slate-400">
+                    +{hiddenCount} more
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
@@ -191,6 +193,7 @@ function MonthView({
         categories={categories}
         selectedDate={pendingEvent?.date}
         selectedHour={0}
+        anchorRect={modalAnchorRect}
         modalPosition={modalPosition}
         setModalPosition={setModalPosition}
         setPendingEvent={setPendingEvent}

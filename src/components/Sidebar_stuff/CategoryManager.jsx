@@ -1,4 +1,3 @@
-// ✅ Fixed CategoryManager with proper calendarId handling
 import { useEffect, useState } from "react";
 import {
   fetchCategories,
@@ -11,7 +10,7 @@ import { HiDotsVertical } from "react-icons/hi";
 import { MdEdit, MdDelete } from "react-icons/md";
 import { FiChevronDown } from "react-icons/fi";
 import AddCategoryModal from "./AddCategoryModal";
-import "../styles/checkbox.css"; // Ensure you have the correct path to your CSS
+import "../styles/checkbox.css";
 
 const presetColors = [
   "#FFF689", "#F4D35E", "#FFB88A", "#FF9C5B", "#F67B45", "#FBC2C2", "#E39B99",
@@ -19,93 +18,98 @@ const presetColors = [
   "#BBA6DD", "#8C7DA8", "#64557B", "#1E2136",
 ];
 
-function getTextColor(bgColor) {
-  const hex = bgColor.replace("#", "");
-  const r = parseInt(hex.substr(0, 2), 16);
-  const g = parseInt(hex.substr(2, 2), 16);
-  const b = parseInt(hex.substr(4, 2), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.6 ? "#000000" : "#FFFFFF";
-}
+function CategoryList({ categories, onAddClick, handleDeleteCategory, toggleVisibility, onEditClick }) {
+  const [open, setOpen] = useState(true);
+  const [menuFor, setMenuFor] = useState(null);
 
-function CategoryDropdown({ categories, onAddClick, handleDeleteCategory, toggleVisibility, onEditClick }) {
-  const [open, setOpen] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(null);
-
-  const toggleMenu = (id) => {
-    setDropdownOpen((prev) => (prev === id ? null : id));
-  };
+  useEffect(() => {
+    if (menuFor === null) return;
+    const close = () => setMenuFor(null);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [menuFor]);
 
   return (
-    <div className="relative">
-      <div className="flex items-center justify-between px-3 py-1 bg-gray-100 rounded-md hover:bg-gray-200 w-full">
-        <span className="text-sm font-medium">Categories</span>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={onAddClick}
-            className="text-blue-600 text-lg px-1 hover:text-blue-800"
-            title="Add Category"
-          >
-            +
-          </button>
-          <button
-            onClick={() => setOpen((prev) => !prev)}
-            className="p-1 hover:bg-gray-100 rounded-full"
-            title="Toggle Category List"
-          >
-            <FiChevronDown
-              size={20}
-              className={`transform transition ${open ? "rotate-180" : ""}`}
-            />
-          </button>
-        </div>
+    <div>
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => setOpen((prev) => !prev)}
+          className="group -ml-1 flex items-center gap-1 rounded px-1 py-0.5"
+        >
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 transition-colors group-hover:text-slate-600">
+            Categories
+          </span>
+          <FiChevronDown
+            className={`h-3 w-3 text-slate-400 transition-transform ${open ? "" : "-rotate-90"}`}
+          />
+        </button>
+        <button
+          onClick={onAddClick}
+          title="Add category"
+          aria-label="Add category"
+          className="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-600"
+        >
+          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
       </div>
+
       {open && (
-        <div className="mt-2 space-y-2">
+        <div className="mt-1.5 space-y-0.5">
+          {categories.length === 0 && (
+            <div className="px-1 py-1.5 text-xs text-slate-400">No categories yet</div>
+          )}
           {categories.map((cat, i) => (
-            <div key={cat.category_id || i} className="relative group">
-              <label className="flex items-center justify-between px-2 py-1 hover:bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={cat.visible}
-                    onChange={() => toggleVisibility(i)}
-                    className="ui-checkbox"
-                  />
-                  <span
-                    className="text-xs font-medium px-3 py-1 rounded-2xl"
-                    style={{ backgroundColor: cat.color, color: getTextColor(cat.color) }}
-                  >
-                    {cat.name}
-                  </span>
-                </div>
-                <button
-                  onClick={() => toggleMenu(cat.category_id)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <HiDotsVertical size={16} />
-                </button>
+            <div
+              key={cat.category_id || i}
+              className="group relative -mx-1 flex items-center gap-1 rounded-md px-1.5 py-1 transition-colors hover:bg-slate-200/60"
+            >
+              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={cat.visible}
+                  onChange={() => toggleVisibility(i)}
+                  className="ui-checkbox shrink-0"
+                />
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
+                  style={{ backgroundColor: cat.color }}
+                />
+                <span className="min-w-0 truncate text-xs font-medium text-slate-700">
+                  {cat.name}
+                </span>
               </label>
-              {dropdownOpen === cat.category_id && (
-                <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded shadow z-10 w-24 text-sm">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuFor((prev) => (prev === cat.category_id ? null : cat.category_id));
+                }}
+                aria-label={`Options for ${cat.name}`}
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-slate-400 opacity-0 transition-opacity hover:text-slate-600 focus:opacity-100 group-hover:opacity-100"
+              >
+                <HiDotsVertical size={13} />
+              </button>
+              {menuFor === cat.category_id && (
+                <div className="absolute right-0 top-full z-20 mt-0.5 w-32 rounded-md border border-slate-200 bg-white py-1 shadow-lg">
                   <button
-                    onClick={() => {
-                      onEditClick(cat);
-                      setDropdownOpen(null);
+                    onClick={(e) => {
+                      onEditClick(cat, e);
+                      setMenuFor(null);
                     }}
-                    className="w-full px-3 py-1 hover:bg-gray-100 text-left"
+                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
                   >
-                    <MdEdit className="inline mr-1" />
+                    <MdEdit className="h-3.5 w-3.5 text-slate-400" />
                     Edit
                   </button>
                   <button
                     onClick={() => {
                       handleDeleteCategory(cat.category_id);
-                      setDropdownOpen(null);
+                      setMenuFor(null);
                     }}
-                    className="w-full px-3 py-1 hover:bg-gray-100 text-left text-red-500"
+                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
                   >
-                    <MdDelete className="inline mr-1" />
+                    <MdDelete className="h-3.5 w-3.5" />
                     Delete
                   </button>
                 </div>
@@ -123,6 +127,7 @@ function CategoryManager({ categories, setCategories, calendarId }) {
   const [showToast, setShowToast] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
+  const [modalAnchorRect, setModalAnchorRect] = useState(null);
 
   useEffect(() => {
     if (calendarId) {
@@ -169,6 +174,7 @@ function CategoryManager({ categories, setCategories, calendarId }) {
           setError("");
           setIsModalOpen(false);
           setEditingCategory(null);
+          setModalAnchorRect(null);
         })
         .catch((err) => {
           console.error("Error updating category:", err);
@@ -178,15 +184,16 @@ function CategoryManager({ categories, setCategories, calendarId }) {
     }
 
     // Creating new category - include calendarId
-    createCategory({ 
-      name: trimmedName, 
+    createCategory({
+      name: trimmedName,
       color: categoryData.color,
-      calendarId: calendarId 
+      calendarId: calendarId
     })
       .then((created) => {
         setCategories((prev) => [...prev, { ...created, visible: true }]);
         setError("");
         setIsModalOpen(false);
+        setModalAnchorRect(null);
       })
       .catch((err) => {
         console.error("Error creating category:", err);
@@ -216,21 +223,23 @@ function CategoryManager({ categories, setCategories, calendarId }) {
 
   // Don't render if no calendarId
   if (!calendarId) {
-    return <div>Loading categories...</div>;
+    return <div className="text-xs text-slate-400">Loading categories…</div>;
   }
 
   return (
     <div>
-      <CategoryDropdown
+      <CategoryList
         categories={categories || []}
         handleDeleteCategory={handleDeleteCategory}
         toggleVisibility={toggleVisibility}
-        onAddClick={() => {
+        onAddClick={(event) => {
           setEditingCategory(null);
+          setModalAnchorRect(event?.currentTarget?.getBoundingClientRect() ?? null);
           setIsModalOpen(true);
         }}
-        onEditClick={(cat) => {
+        onEditClick={(cat, event) => {
           setEditingCategory(cat);
+          setModalAnchorRect(event?.currentTarget?.getBoundingClientRect() ?? null);
           setIsModalOpen(true);
         }}
       />
@@ -240,26 +249,28 @@ function CategoryManager({ categories, setCategories, calendarId }) {
         onClose={() => {
           setIsModalOpen(false);
           setEditingCategory(null);
+          setModalAnchorRect(null);
           setError("");
         }}
         onAddCategory={handleAddCategory}
         presetColors={presetColors}
         error={error}
         defaultValues={editingCategory}
+        anchorRect={modalAnchorRect}
       />
 
-      <div className="pt-4 border-t mt-4">
+      {(categories || []).length > 0 && (
         <button
           onClick={handleClearAll}
-          className="text-red-600 text-sm font-medium hover:underline"
+          className="mt-3 px-1 text-[11px] font-medium text-slate-400 transition-colors hover:text-red-600"
         >
-          Clear All Categories
+          Clear all categories
         </button>
-      </div>
+      )}
 
       {showToast && (
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-sm font-medium px-4 py-2 rounded shadow-lg z-50">
-          ✅ Categories cleared!
+        <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-lg">
+          Categories cleared
         </div>
       )}
     </div>

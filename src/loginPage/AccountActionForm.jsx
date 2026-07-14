@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-  enrollLegacyEmail,
   forgotPassword,
   resendVerification,
   resetPassword,
@@ -11,14 +10,12 @@ import AuthCard from './AuthCard';
 const titles = {
   forgot: 'Forgot Password',
   resend: 'Resend Verification',
-  legacy: 'Add Email to Existing Account',
   reset: 'Reset Password',
   verify: 'Verify Email',
 };
 
 function AccountActionForm({ mode, token, onDone, onCancel }) {
   const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(mode === 'verify');
@@ -39,7 +36,6 @@ function AccountActionForm({ mode, token, onDone, onCancel }) {
       let result;
       if (mode === 'forgot') result = await forgotPassword(email);
       if (mode === 'resend') result = await resendVerification(email);
-      if (mode === 'legacy') result = await enrollLegacyEmail(username, password, email);
       if (mode === 'reset') result = await resetPassword(token, password);
       setMessage(result.message);
     } catch (error) {
@@ -58,20 +54,6 @@ function AccountActionForm({ mode, token, onDone, onCancel }) {
         </p>
       ) : (
         <>
-          {mode === 'legacy' && (
-            <label className="block text-left">
-              <span className="text-sm font-medium text-slate-700">Existing username</span>
-              <input
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
-                type="text"
-                placeholder="Existing username"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                required
-                disabled={loading}
-              />
-            </label>
-          )}
           {mode !== 'reset' && (
             <label className="block text-left">
               <span className="text-sm font-medium text-slate-700">Email</span>
@@ -86,15 +68,15 @@ function AccountActionForm({ mode, token, onDone, onCancel }) {
               />
             </label>
           )}
-          {(mode === 'legacy' || mode === 'reset') && (
+          {mode === 'reset' && (
             <label className="block text-left">
               <span className="text-sm font-medium text-slate-700">
-                {mode === 'reset' ? 'New password' : 'Current password'}
+                New password
               </span>
               <input
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
                 type="password"
-                placeholder={mode === 'reset' ? 'New password' : 'Current password'}
+                placeholder="New password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 minLength={8}

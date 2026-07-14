@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { loginUser } from "../services/userService";
 import AuthCard from "./AuthCard";
 
-function LoginForm({ onLoginSuccess, onShowSignUp, onForgotPassword, onLegacyAccount, onResend }) {
+function LoginForm({ onLoginSuccess, onShowSignUp, onForgotPassword, onResend }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -67,9 +67,6 @@ function LoginForm({ onLoginSuccess, onShowSignUp, onForgotPassword, onLegacyAcc
         </button>
         <button type="button" onClick={onResend} className="text-slate-600 hover:text-blue-700">
           Resend verification
-        </button>
-        <button type="button" onClick={onLegacyAccount} className="text-slate-600 hover:text-blue-700">
-          Existing username-only account
         </button>
       </div>
     </AuthCard>

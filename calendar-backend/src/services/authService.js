@@ -19,7 +19,7 @@ function expiresFromNow(amount, unitMs) {
   return new Date(Date.now() + amount * unitMs);
 }
 
-export function createAuthService(userRepository, mailService, config) {
+export function createAuthService(userRepository, config) {
   const dummyHash = bcrypt.hash('not-a-real-password', 12);
 
   function signAccessToken(user) {
@@ -45,13 +45,13 @@ export function createAuthService(userRepository, mailService, config) {
     const lifetime = type === 'email_verification'
       ? config.VERIFICATION_TOKEN_TTL_HOURS * 60 * 60 * 1000
       : config.RESET_TOKEN_TTL_MINUTES * 60 * 1000;
-    await userRepository.createAccountToken(
-      user.id,
+    return userRepository.issueAccountTokenWithEmail(
+      user,
       type,
       hashToken(token),
+      token,
       new Date(Date.now() + lifetime)
     );
-    return token;
   }
 
   async function issueSession(user) {
@@ -77,15 +77,20 @@ export function createAuthService(userRepository, mailService, config) {
       if (existingEmail) throw conflict('Email already exists');
 
       const hashedPassword = await bcrypt.hash(password, 12);
-      let user;
       try {
-        user = await userRepository.create(username, email, hashedPassword);
+        const token = randomToken();
+        await userRepository.createWithVerification({
+          username,
+          email,
+          hashedPassword,
+          tokenHash: hashToken(token),
+          token,
+          expiresAt: expiresFromNow(config.VERIFICATION_TOKEN_TTL_HOURS, 60 * 60 * 1000),
+        });
       } catch (error) {
         if (error.code === '23505') throw conflict('Username or email already exists');
         throw error;
       }
-      const token = await issueAccountToken(user, 'email_verification');
-      await mailService.sendVerification(user.email, token);
       return { message: 'Registration accepted. Check your email to verify your account.' };
     },
 
@@ -98,8 +103,7 @@ export function createAuthService(userRepository, mailService, config) {
     async resendVerification({ email }) {
       const user = await userRepository.findByEmail(email);
       if (user && !user.email_verified_at) {
-        const token = await issueAccountToken(user, 'email_verification');
-        await mailService.sendVerification(user.email, token);
+        await issueAccountToken(user, 'email_verification');
       }
       return { message: 'If the account is eligible, a verification email has been sent.' };
     },
@@ -146,8 +150,7 @@ export function createAuthService(userRepository, mailService, config) {
     async forgotPassword({ email }) {
       const user = await userRepository.findByEmail(email);
       if (user?.email_verified_at) {
-        const token = await issueAccountToken(user, 'password_reset');
-        await mailService.sendPasswordReset(user.email, token);
+        await issueAccountToken(user, 'password_reset');
       }
       return { message: 'If the account exists, a password reset email has been sent.' };
     },
@@ -157,24 +160,6 @@ export function createAuthService(userRepository, mailService, config) {
       const user = await userRepository.consumeResetToken(hashToken(token), hashedPassword);
       if (!user) throw unauthorized('Invalid or expired password reset token');
       return { message: 'Password reset. Please log in again.' };
-    },
-
-    async enrollLegacyEmail({ username, password, email }) {
-      const user = await userRepository.findByUsername(username);
-      const valid = await bcrypt.compare(password, user?.password ?? await dummyHash);
-      if (!user || !valid || user.email) throw unauthorized(INVALID_CREDENTIALS);
-
-      let updated;
-      try {
-        updated = await userRepository.attachLegacyEmail(user.id, email);
-      } catch (error) {
-        if (error.code === '23505') throw conflict('Email already exists');
-        throw error;
-      }
-      if (!updated) throw unauthorized(INVALID_CREDENTIALS);
-      const token = await issueAccountToken(updated, 'email_verification');
-      await mailService.sendVerification(updated.email, token);
-      return { message: 'Email added. Check your email to verify your account.' };
     },
   };
 }

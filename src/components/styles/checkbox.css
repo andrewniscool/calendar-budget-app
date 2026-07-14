@@ -2,17 +2,17 @@
 /* checkbox settings 👇 */
 
 .ui-checkbox {
-  --primary-color: #1677ff;
+  --primary-color: var(--accent, #2563eb);
   --secondary-color: #fff;
-  --primary-hover-color: #4096ff;
+  --primary-hover-color: var(--accent-hover, #1d4ed8);
   /* checkbox */
-  --checkbox-diameter: 20px;
-  --checkbox-border-radius: 5px;
-  --checkbox-border-color: #d9d9d9;
+  --checkbox-diameter: 16px;
+  --checkbox-border-radius: 4px;
+  --checkbox-border-color: #cbd5e1;
   --checkbox-border-width: 1px;
   --checkbox-border-style: solid;
   /* checkmark */
-  --checkmark-size: 1.2;
+  --checkmark-size: 1;
 }
 
 .ui-checkbox, 

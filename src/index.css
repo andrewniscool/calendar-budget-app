@@ -2,8 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base{
-    body {
-        @apply bg-gray-50 text-gray-900 font-sans;
-      }      
+:root {
+  --accent: #0f172a;
+  --accent-hover: #334155;
+  --accent-soft: #f1f5f9;
+  --border: #e2e8f0;
+  --surface: #ffffff;
+  --text-secondary: #475569;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 font-sans antialiased;
+    overflow-x: hidden; /* prevent scrollbar layout shift */
+  }
+}
+
+@layer components {
+  .event-block {
+    transition: filter 120ms ease, box-shadow 120ms ease;
+  }
+  .event-block:hover {
+    filter: brightness(0.96);
+    box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.1);
+  }
 }

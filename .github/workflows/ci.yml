@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: calendar_test_user
+          POSTGRES_PASSWORD: calendar_test_password
+          POSTGRES_DB: calendar_test_db
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U calendar_test_user -d calendar_test_db"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            calendar-backend/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: calendar-backend
+      - name: Lint
+        run: npm run lint
+      - name: Backend lint
+        run: npm run lint
+        working-directory: calendar-backend
+      - name: Backend unit tests
+        run: npm run test:unit
+        working-directory: calendar-backend
+      - name: Apply test migration
+        run: npm run migrate:test
+        working-directory: calendar-backend
+      - name: Backend integration tests
+        run: npm run test:integration:ci
+        working-directory: calendar-backend
+      - name: Frontend build
+        run: npm run build
+      - name: Dependency audit
+        run: npm audit --omit=dev --audit-level=high
+      - name: Backend dependency audit
+        run: npm audit --omit=dev --audit-level=high
+        working-directory: calendar-backend

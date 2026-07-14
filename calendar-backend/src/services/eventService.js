@@ -1,4 +1,4 @@
-import { badRequest, notFound } from '../errors.js';
+import { badRequest, dateRangeRequired, notFound } from '../errors.js';
 
 function translateDatabaseError(error) {
   if (error.code === '23503') {
@@ -15,7 +15,11 @@ export function createEventService(repository) {
     async list(userId, { calendarId, startDate, endDate }) {
       const exists = await repository.calendarExists(calendarId, userId);
       if (!exists) throw notFound('Calendar not found');
-      return repository.list(calendarId, userId, { startDate, endDate });
+      const events = await repository.list(calendarId, userId, { startDate, endDate });
+      if ((!startDate || !endDate) && events.length > 1000) {
+        throw dateRangeRequired('This calendar has too many events; provide startDate and endDate');
+      }
+      return events;
     },
 
     async create(userId, data) {

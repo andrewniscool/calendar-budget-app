@@ -23,6 +23,8 @@ function Calendar({
     onDeleteEvent,
     modalPosition,
     setModalPosition,
+    modalAnchorRect,
+    setModalAnchorRect,
 }) {
   const [pendingEvent, setPendingEvent] = useState(null);
   
@@ -45,6 +47,8 @@ function Calendar({
           onDeleteEvent={onDeleteEvent}
           modalPosition={modalPosition}
           setModalPosition={setModalPosition}
+          modalAnchorRect={modalAnchorRect}
+          setModalAnchorRect={setModalAnchorRect}
           pendingEvent={pendingEvent}
           setPendingEvent={setPendingEvent}
         />
@@ -66,6 +70,8 @@ function Calendar({
           onDeleteEvent={onDeleteEvent}
           modalPosition={modalPosition}
           setModalPosition={setModalPosition}
+          modalAnchorRect={modalAnchorRect}
+          setModalAnchorRect={setModalAnchorRect}
           viewMode={viewMode}
           setViewMode={setViewMode}
           pendingEvent={pendingEvent}
@@ -98,6 +104,8 @@ function Calendar({
           onDeleteEvent={onDeleteEvent}
           modalPosition={modalPosition}
           setModalPosition={setModalPosition}
+          modalAnchorRect={modalAnchorRect}
+          setModalAnchorRect={setModalAnchorRect}
           pendingEvent={pendingEvent}
           setPendingEvent={setPendingEvent}
         />

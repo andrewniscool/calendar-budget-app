@@ -22,7 +22,8 @@ function MainApp({ calendarId, onLogout }) {
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [selectedHour, setSelectedHour] = useState(null);
-  const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
+  const [modalPosition, setModalPosition] = useState(null);
+  const [modalAnchorRect, setModalAnchorRect] = useState(null);
   const [viewMode, setViewMode] = useState("week");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -100,17 +101,18 @@ function MainApp({ calendarId, onLogout }) {
       });
   }
 
-  function handleAddEventClick() {
+  function handleAddEventClick(e) {
     const now = new Date();
     const hour = now.getHours();
     setSelectedDate(now.toISOString().split("T")[0]);
     setSelectedHour(hour);
     setEditingEvent(null);
+    setModalAnchorRect(e?.currentTarget?.getBoundingClientRect() ?? null);
     setIsEventModalOpen(true);
   }
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col bg-white">
       <Header
         viewMode={viewMode}
         setViewMode={setViewMode}
@@ -120,7 +122,7 @@ function MainApp({ calendarId, onLogout }) {
         setIsSidebarOpen={setIsSidebarOpen}
         onLogout={onLogout}
       />
-      <div className="flex flex-1 bg-gray-50 rounded-xl m-4 overflow-hidden shadow">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         <div className={`transition-all duration-300 ${isSidebarOpen ? "w-64" : "w-0"} overflow-hidden`}>
           <Sidebar
             calendarId = {calendarId}
@@ -154,6 +156,8 @@ function MainApp({ calendarId, onLogout }) {
             onDeleteEvent={handleDeleteEvent}
             modalPosition={modalPosition}
             setModalPosition={setModalPosition}
+            modalAnchorRect={modalAnchorRect}
+            setModalAnchorRect={setModalAnchorRect}
           />
         </main>
       </div>
