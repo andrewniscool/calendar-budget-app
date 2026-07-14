@@ -37,7 +37,13 @@ export function parseCookies(header = '') {
     if (separator < 0) return cookies;
     const name = item.slice(0, separator).trim();
     const value = item.slice(separator + 1).trim();
-    if (name) cookies[name] = decodeURIComponent(value);
+    if (name) {
+      try {
+        cookies[name] = decodeURIComponent(value);
+      } catch {
+        // Ignore malformed cookie values instead of failing the entire request.
+      }
+    }
     return cookies;
   }, {});
 }

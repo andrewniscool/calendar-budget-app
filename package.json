@@ -13,6 +13,7 @@
     "test:backend": "npm --prefix calendar-backend test",
     "dev": "vite",
     "dev:backend": "npm --prefix calendar-backend start",
+    "dev:worker": "npm --prefix calendar-backend run worker",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

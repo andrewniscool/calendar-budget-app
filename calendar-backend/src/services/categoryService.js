@@ -1,4 +1,4 @@
-import { conflict, notFound } from '../errors.js';
+import { conflict, limitReached, notFound } from '../errors.js';
 
 function translateDatabaseError(error) {
   if (error.code === '23505') throw conflict('Category name already exists in this calendar');
@@ -16,7 +16,12 @@ export function createCategoryService(repository) {
     async create(userId, data) {
       try {
         const created = await repository.create({ ...data, userId });
-        if (!created) throw notFound('Calendar not found');
+        if (!created) {
+          if (!await repository.calendarExists(data.calendarId, userId)) throw notFound('Calendar not found');
+          if (await repository.count(data.calendarId) >= 500) {
+            throw limitReached('A calendar can have at most 500 categories');
+          }
+        }
         return created;
       } catch (error) {
         return translateDatabaseError(error);

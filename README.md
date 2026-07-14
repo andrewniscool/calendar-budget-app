@@ -8,7 +8,7 @@ This repo contains:
 
 ## Prereqs
 
-- Node 18+
+- Node 20+
 - npm
 - Docker Desktop or Docker Engine with `docker compose`
 
@@ -90,6 +90,12 @@ Start the backend:
 npm run dev:backend
 ```
 
+Start the durable email worker in another terminal:
+
+```bash
+npm --prefix calendar-backend run dev:worker
+```
+
 Start the frontend in another terminal:
 
 ```bash
@@ -158,9 +164,8 @@ run.
 - If you move to another device, the DB setup now lives in the repo. You only need Docker plus the normal `npm install` steps.
 - Authentication uses HttpOnly access and refresh cookies. Browser code does
   not store tokens in local storage.
-- New accounts must verify their email before login. Existing username-only
-  accounts can use the "Existing username-only account" flow to add and verify
-  an email without losing calendar data.
+- New accounts must verify their email before login. Verification and password
+  reset emails are delivered through the backend's durable database outbox.
 - Unsafe API requests require the signed CSRF cookie and matching
   `X-CSRF-Token` header; the shared frontend API client handles this
   automatically.

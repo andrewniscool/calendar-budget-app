@@ -1,4 +1,4 @@
-import { badRequest, notFound } from '../errors.js';
+import { badRequest, limitReached, notFound } from '../errors.js';
 
 function translateDatabaseError(error) {
   if (error.code === '23503') {
@@ -21,7 +21,12 @@ export function createRecurringEventService(repository) {
     async create(userId, data) {
       try {
         const created = await repository.create(data, userId);
-        if (!created) throw notFound('Calendar not found');
+        if (!created) {
+          if (!await repository.calendarExists(data.calendarId, userId)) throw notFound('Calendar not found');
+          if (await repository.count(data.calendarId) >= 500) {
+            throw limitReached('A calendar can have at most 500 recurring events');
+          }
+        }
         return created;
       } catch (error) {
         return translateDatabaseError(error);

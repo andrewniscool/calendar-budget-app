@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import ColorPickerPanel from "./ColorPickerPanel"; // import here
+// eslint-disable-next-line no-unused-vars
+import { AnimatePresence, motion } from "framer-motion";
 
 function AddCategoryModal({
   isOpen,
@@ -9,14 +10,14 @@ function AddCategoryModal({
   presetColors,
   error,
   defaultValues = null,
+  anchorRect = null,
 }) {
   const [mounted, setMounted] = useState(false);
   const [name, setName] = useState(defaultValues?.name || "");
   const [color, setColor] = useState(defaultValues?.color || presetColors[0]);
   const [localError, setLocalError] = useState("");
-  const [customColors, setCustomColors] = useState([]);
-  const [pendingColor, setPendingColor] = useState("");
-  const [view, setView] = useState("main");
+  const [position, setPosition] = useState(null);
+  const popoverRef = useRef(null);
 
   const isEditing = Boolean(defaultValues);
 
@@ -27,16 +28,41 @@ function AddCategoryModal({
       setName(defaultValues?.name || "");
       setColor(defaultValues?.color || presetColors[0]);
       setLocalError("");
-      setView("main");
     }
   }, [isOpen, presetColors, defaultValues]);
 
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      return () => (document.body.style.overflow = "");
-    }
-  }, [isOpen]);
+  useLayoutEffect(() => {
+    if (!isOpen || !anchorRect) return;
+    const gap = 8;
+    const padding = 12;
+    const updatePosition = () => {
+      const measured = popoverRef.current?.getBoundingClientRect();
+      const width = measured?.width || 288;
+      const height = measured?.height || 320;
+      const maxLeft = Math.max(padding, window.innerWidth - width - padding);
+      const maxTop = Math.max(padding, window.innerHeight - height - padding);
+
+      // Place it to the right with aligned top edges, flip horizontally when
+      // needed, then clamp both axes so the whole popover stays visible.
+      const rightSideLeft = anchorRect.right + gap;
+      const preferredLeft = rightSideLeft + width <= window.innerWidth - padding
+        ? rightSideLeft
+        : anchorRect.left - width - gap;
+      setPosition({
+        top: Math.min(Math.max(anchorRect.top, padding), maxTop),
+        left: Math.min(Math.max(preferredLeft, padding), maxLeft),
+      });
+    };
+
+    updatePosition();
+    const observer = new ResizeObserver(updatePosition);
+    if (popoverRef.current) observer.observe(popoverRef.current);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [isOpen, anchorRect]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -52,37 +78,36 @@ function AddCategoryModal({
   if (!modalRoot) return null;
 
   return createPortal(
-    <>
-      <div
-        className="fixed inset-0 z-40 bg-slate-900/20"
-        onClick={onClose}
-      />
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
-        tabIndex={-1}
-      >
-        <div
-          className="bg-white p-6 rounded-xl border border-slate-200 shadow-xl w-full max-w-md relative pointer-events-auto overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Sliding container for main and color picker views */}
-          <div
-            className="flex transition-transform duration-500 ease-in-out"
-            style={{
-              width: "200%",
-              transform:
-                view === "main" ? "translateX(0%)" : "translateX(-52%)",
-            }}
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            className="fixed inset-0 z-40"
+            onClick={onClose}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.14, ease: "easeOut" }}
+          />
+          <motion.div
+            ref={popoverRef}
+            className="fixed z-50 max-h-[calc(100vh-24px)] w-[min(288px,calc(100vw-24px))] overflow-y-auto overflow-x-hidden rounded-lg border border-slate-200 bg-white shadow-xl shadow-slate-900/10"
+            style={{ top: position?.top ?? 12, left: position?.left ?? 12 }}
+            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
+            onClick={(e) => e.stopPropagation()}
           >
-            {/* MAIN FORM VIEW */}
-            <div className="w-1/2 shrink-0 px-5 space-y-4">
+          <div className="space-y-3 px-4 py-3">
               <div className="flex justify-between items-center">
-                <h2 className="text-base font-semibold text-slate-900">
+                <h2 className="text-sm font-semibold text-slate-900">
                   {isEditing ? "Edit Category" : "Add Category"}
                 </h2>
                 <button
                   onClick={onClose}
-                  className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 text-xl leading-none transition-colors duration-150"
+                  title="Close"
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-lg leading-none text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
                 >
                   ×
                 </button>
@@ -92,13 +117,13 @@ function AddCategoryModal({
                 <p className="text-red-600 text-sm">{localError || error}</p>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">
                     Category name
                   </label>
                   <input
-                    className="w-full border border-slate-200 px-3 py-2 text-sm rounded-md text-slate-900 placeholder-slate-400 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-300/60 focus:border-slate-300"
+                    className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-[13px] text-slate-900 placeholder-slate-400 transition-colors focus:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300/60"
                     placeholder="Enter category name"
                     value={name}
                     onChange={(e) => {
@@ -113,14 +138,14 @@ function AddCategoryModal({
                   <label className="block text-xs font-medium text-slate-600 mb-2">
                     Color
                   </label>
-                  <div className="flex flex-wrap gap-2">
-                    {[...presetColors, ...customColors].map((c) => (
+                  <div className="flex flex-wrap gap-1.5">
+                    {presetColors.map((c) => (
                       <button
                         key={c}
                         type="button"
                         onClick={() => setColor(c)}
                         style={{ backgroundColor: c }}
-                        className={`w-6 h-6 rounded-full transition-shadow ${
+                        className={`h-5 w-5 rounded-full transition-shadow ${
                           color === c
                             ? "ring-2 ring-offset-2 ring-slate-900"
                             : "ring-1 ring-slate-200 hover:ring-slate-400"
@@ -129,29 +154,16 @@ function AddCategoryModal({
                       />
                     ))}
 
-                    <div className="relative group">
-                      <button
-                        type="button"
-                        className="w-6 h-6 rounded-full border-2 border-dashed border-gray-400 flex items-center justify-center text-gray-600 text-base font-bold cursor-pointer hover:border-black transition-transform"
-                        onClick={() => setView("colorPicker")}
-                      >
-                        +
-                      </button>
-
-                      <span className="whitespace-nowrap absolute -top--10 left-1/2 transform -translate-x-1/2 px-5 py-1 text-xs text-white bg-black rounded opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-10">
-                        Add custom color
-                      </span>
-                    </div>
                   </div>
                 </div>
 
                 {name.trim() && (
                   <div>
-                    <span className="text-xs text-slate-500 block mb-1">
+                    <span className="mb-1 block text-[11px] text-slate-500">
                       Preview:
                     </span>
                     <span
-                      className="text-xs font-medium px-3 py-1 rounded-full inline-block"
+                      className="inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium"
                       style={{
                         backgroundColor: color,
                         color: getTextColor(color),
@@ -162,49 +174,27 @@ function AddCategoryModal({
                   </div>
                 )}
 
-                <div className="flex justify-end gap-2 pt-2">
+                <div className="flex justify-end gap-1.5 pt-1">
                   <button
                     type="button"
                     onClick={onClose}
-                    className="px-4 py-2 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors text-sm font-medium"
+                    className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-md bg-slate-900 text-white hover:bg-slate-700 transition-colors text-sm font-medium shadow-sm"
+                    className="rounded-md bg-slate-900 px-3 py-1.5 text-[13px] font-medium text-white shadow-sm transition-colors hover:bg-slate-700"
                   >
                     {isEditing ? "Save" : "Add"}
                   </button>
                 </div>
               </form>
-            </div>
-
-            <div className="w-5/10 shrink-0 px-5 space-y-4"></div>
-
-            {/* COLOR PICKER VIEW */}
-            <ColorPickerPanel
-              presetColors={presetColors}
-              customColors={customColors}
-              pendingColor={pendingColor}
-              setPendingColor={setPendingColor}
-              onBack={() => setView("main")}
-              onUseColor={() => {
-                if (
-                  pendingColor &&
-                  ![...presetColors, ...customColors].includes(pendingColor)
-                ) {
-                  setCustomColors((prev) => [...prev, pendingColor]);
-                  setColor(pendingColor);
-                  setPendingColor("");
-                }
-                setView("main");
-              }}
-            />
           </div>
-        </div>
-      </div>
-    </>,
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>,
     modalRoot
   );
 }

@@ -1,19 +1,21 @@
 export default [
   {
-    files: ['calendar-backend/**/*.js'],
+    files: ['**/*.js'],
     languageOptions: {
       ecmaVersion: 2021,
-      sourceType: 'commonjs',
+      sourceType: 'module',
       globals: {
-        require: 'readonly',
-        module: 'readonly',
         process: 'readonly',
-        __dirname: 'readonly',
+        Buffer: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
         console: 'readonly',
       },
     },
     rules: {
-      // Add custom rules if needed
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'no-undef': 'error',
+      'no-console': 'error',
     },
   },
 ];

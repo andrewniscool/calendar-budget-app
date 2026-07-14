@@ -37,10 +37,7 @@ export function createBudgetLimitService(repository) {
     async upsert(userId, data) {
       try {
         const rows = await repository.upsertMany(userId, data);
-        if (!rows.length) {
-          const exists = await repository.calendarExists(data.calendarId, userId);
-          if (!exists) throw notFound('Calendar not found');
-        }
+        if (!rows) throw notFound('Calendar not found');
         return formatBudgetLimits(data.calendarId, data.period, rows);
       } catch (error) {
         return translateDatabaseError(error);

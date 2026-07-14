@@ -87,7 +87,6 @@ function App() {
         onShowSignUp={() => setAuthView({ mode: 'signup', token: null })}
         onForgotPassword={() => setAuthView({ mode: 'forgot', token: null })}
         onResend={() => setAuthView({ mode: 'resend', token: null })}
-        onLegacyAccount={() => setAuthView({ mode: 'legacy', token: null })}
       />
     </>
   );

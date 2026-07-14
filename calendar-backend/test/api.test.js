@@ -1,9 +1,9 @@
-import bcrypt from 'bcrypt';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { createPool } from '../src/db.js';
 import { getConfig } from '../src/config.js';
+import { createMailOutboxRepository } from '../src/repositories/mailOutboxRepository.js';
 
 const databaseUrl = 'postgres://calendar_test_user:calendar_test_password@127.0.0.1:5433/calendar_test_db';
 const testPassword = 'test-password';
@@ -16,6 +16,8 @@ const baseConfig = {
   CORS_ORIGINS: 'http://localhost:5173',
   APP_ORIGIN: 'http://localhost:5173',
   AUTH_RATE_LIMIT_MAX: 1000,
+  GLOBAL_RATE_LIMIT_MAX: 100000,
+  SENSITIVE_RATE_LIMIT_MAX: 1000,
   ACCESS_TOKEN_TTL_MINUTES: 15,
   REFRESH_TOKEN_TTL_DAYS: 30,
   VERIFICATION_TOKEN_TTL_HOURS: 24,
@@ -28,21 +30,22 @@ const baseConfig = {
 
 let db;
 let app;
-let sentMail;
-
 function createTestApp(overrides = {}) {
   return createApp({
     db,
     config: getConfig({ ...baseConfig, ...overrides }),
-    mailService: {
-      async sendVerification(email, token) {
-        sentMail.push({ type: 'verification', email, token });
-      },
-      async sendPasswordReset(email, token) {
-        sentMail.push({ type: 'reset', email, token });
-      },
-    },
   });
+}
+
+async function latestMail(type, recipient) {
+  const result = await db.query(
+    `SELECT type, recipient, payload
+     FROM mail_outbox
+     WHERE type = $1 AND recipient = $2
+     ORDER BY id DESC LIMIT 1`,
+    [type, recipient]
+  );
+  return result.rows[0];
 }
 
 async function csrf(agent) {
@@ -59,8 +62,8 @@ async function registerVerifyLogin(username = 'test-user', email = `${username}@
   let csrfToken = await csrf(agent);
   await post(agent, '/auth/register', { username, email, password: testPassword }, csrfToken)
     .expect(202);
-  const verification = sentMail.find((mail) => mail.type === 'verification' && mail.email === email);
-  await post(agent, '/auth/verify-email', { token: verification.token }, csrfToken).expect(200);
+  const verification = await latestMail('email_verification', email);
+  await post(agent, '/auth/verify-email', { token: verification.payload.token }, csrfToken).expect(200);
   const login = await post(agent, '/auth/login', { email, password: testPassword }, csrfToken)
     .expect(200);
   csrfToken = login.headers['set-cookie']
@@ -85,9 +88,8 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
-  sentMail = [];
   await db.query(
-    'TRUNCATE account_tokens, refresh_tokens, recurring_events, budget_limits, calendar_settings, events, categories, calendars, users RESTART IDENTITY CASCADE'
+    'TRUNCATE mail_outbox, account_tokens, refresh_tokens, recurring_events, budget_limits, calendar_settings, events, categories, calendars, users RESTART IDENTITY CASCADE'
   );
 });
 
@@ -116,9 +118,38 @@ describe('security middleware and configuration', () => {
       .send({ email: 'x@example.com', password: testPassword })
       .expect(403);
   });
+
+  it('rejects malformed and oversized JSON and reports failed readiness', async () => {
+    await request(app)
+      .post('/auth/login')
+      .set('Content-Type', 'application/json')
+      .send('{broken')
+      .expect(400);
+    await request(app)
+      .post('/auth/login')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ padding: 'x'.repeat(110_000) }))
+      .expect(413);
+
+    const unavailable = createApp({
+      db: { query: async () => { throw new Error('database unavailable'); } },
+      config: getConfig(baseConfig),
+      logger: { info() {}, warn() {}, error() {} },
+    });
+    await request(unavailable).get('/health/live').expect(200);
+    await request(unavailable).get('/health/ready').expect(500);
+  });
+
+  it('applies the global limit with standard rate-limit headers', async () => {
+    const limited = createTestApp({ GLOBAL_RATE_LIMIT_MAX: 1 });
+    await request(limited).get('/health/live').expect(200);
+    const response = await request(limited).get('/health/live').expect(429);
+    expect(response.headers).toHaveProperty('ratelimit');
+    expect(response.body.code).toBe('RATE_LIMITED');
+  });
 });
 
-describe('registration, verification, and legacy enrollment', () => {
+describe('registration and verification', () => {
   it('requires verification before login and consumes verification tokens once', async () => {
     const agent = request.agent(app);
     const token = await csrf(agent);
@@ -133,9 +164,9 @@ describe('registration, verification, and legacy enrollment', () => {
       password: testPassword,
     }, token).expect(401);
 
-    const verification = sentMail[0];
-    await post(agent, '/auth/verify-email', { token: verification.token }, token).expect(200);
-    await post(agent, '/auth/verify-email', { token: verification.token }, token).expect(401);
+    const verification = await latestMail('email_verification', 'new.user@example.com');
+    await post(agent, '/auth/verify-email', { token: verification.payload.token }, token).expect(200);
+    await post(agent, '/auth/verify-email', { token: verification.payload.token }, token).expect(401);
 
     const stored = await db.query(
       'SELECT email, email_verified_at, password FROM users WHERE username = $1',
@@ -157,28 +188,38 @@ describe('registration, verification, and legacy enrollment', () => {
       email: 'replace@example.com',
       password: testPassword,
     }, token).expect(202);
-    const first = sentMail.at(-1).token;
+    const first = (await latestMail('email_verification', 'replace@example.com')).payload.token;
     await post(agent, '/auth/resend-verification', { email: 'replace@example.com' }, token).expect(202);
-    const second = sentMail.at(-1).token;
+    const throttledCount = await db.query(
+      `SELECT COUNT(*)::integer AS count FROM mail_outbox
+       WHERE recipient = 'replace@example.com' AND type = 'email_verification'`
+    );
+    expect(throttledCount.rows[0].count).toBe(1);
+    await db.query(
+      `UPDATE account_tokens SET created_at = CURRENT_TIMESTAMP - INTERVAL '6 minutes'
+       WHERE user_id = (SELECT id FROM users WHERE email = 'replace@example.com')`
+    );
+    await post(agent, '/auth/resend-verification', { email: 'replace@example.com' }, token).expect(202);
+    const second = (await latestMail('email_verification', 'replace@example.com')).payload.token;
     await post(agent, '/auth/verify-email', { token: first }, token).expect(401);
     await post(agent, '/auth/verify-email', { token: second }, token).expect(200);
   });
 
-  it('enrolls and verifies an email for a preserved username-only account', async () => {
-    const passwordHash = await bcrypt.hash(testPassword, 12);
-    await db.query('INSERT INTO users (username, password) VALUES ($1, $2)', [
-      'legacy-user',
-      passwordHash,
-    ]);
+  it('creates the account, verification token, and mail job atomically', async () => {
     const agent = request.agent(app);
     const token = await csrf(agent);
-    await post(agent, '/auth/legacy-email', {
-      username: 'legacy-user',
-      password: testPassword,
-      email: 'legacy@example.com',
-    }, token).expect(202);
-    expect(sentMail[0]).toMatchObject({ type: 'verification', email: 'legacy@example.com' });
+    const payload = { username: 'atomic-user', email: 'atomic@example.com', password: testPassword };
+    await post(agent, '/auth/register', payload, token).expect(202);
+    await post(agent, '/auth/register', payload, token).expect(409);
+    const result = await db.query(
+      `SELECT
+         (SELECT COUNT(*) FROM users WHERE email = 'atomic@example.com')::integer AS users,
+         (SELECT COUNT(*) FROM account_tokens)::integer AS tokens,
+         (SELECT COUNT(*) FROM mail_outbox)::integer AS jobs`
+    );
+    expect(result.rows[0]).toEqual({ users: 1, tokens: 1, jobs: 1 });
   });
+
 });
 
 describe('sessions, lockout, and recovery', () => {
@@ -272,7 +313,7 @@ describe('sessions, lockout, and recovery', () => {
 
     await post(first.agent, '/auth/forgot-password', { email: 'reset@example.com' }, first.csrfToken)
       .expect(202);
-    const resetToken = sentMail.find((mail) => mail.type === 'reset').token;
+    const resetToken = (await latestMail('password_reset', 'reset@example.com')).payload.token;
     await post(first.agent, '/auth/reset-password', {
       token: resetToken,
       password: 'new-test-password',
@@ -351,6 +392,25 @@ describe('tenant resources with cookie authentication', () => {
     expect(filtered.body[0].title).toBe('Inside');
   });
 
+  it('requires a bounded query after one thousand events and rejects oversized ranges', async () => {
+    const session = await registerVerifyLogin('large-user', 'large@example.com');
+    const calendar = await createCalendar(session);
+    await db.query(
+      `INSERT INTO events (calendar_id, title, date, time_start, time_end, budget)
+       SELECT $1, 'Generated ' || value, DATE '2026-01-01', TIME '09:00', TIME '10:00', 0
+       FROM GENERATE_SERIES(1, 1001) AS value`,
+      [calendar.calendar_id]
+    );
+
+    const unbounded = await session.agent
+      .get(`/events?calendarId=${calendar.calendar_id}`)
+      .expect(400);
+    expect(unbounded.body.code).toBe('DATE_RANGE_REQUIRED');
+    await session.agent
+      .get(`/events?calendarId=${calendar.calendar_id}&startDate=2025-01-01&endDate=2026-01-03`)
+      .expect(400);
+  });
+
   it('stores budget limits for an overall month and category-specific limits', async () => {
     const session = await registerVerifyLogin('budget-user', 'budget@example.com');
     const calendar = await createCalendar(session);
@@ -401,6 +461,46 @@ describe('tenant resources with cookie authentication', () => {
         calendarId: first.calendar_id,
         period: '2026-06',
         categories: [{ categoryId: category.body.category_id, amount: 50 }],
+      })
+      .expect(400);
+  });
+
+  it('rolls back the full budget batch when any category is invalid', async () => {
+    const session = await registerVerifyLogin('rollback-user', 'rollback@example.com');
+    const calendar = await createCalendar(session);
+    const category = await post(session.agent, '/categories', {
+      calendarId: calendar.calendar_id,
+      name: 'Valid',
+      color: '#123456',
+    }, session.csrfToken).expect(201);
+
+    await session.agent.put('/budget-limits')
+      .set('X-CSRF-Token', session.csrfToken)
+      .send({
+        calendarId: calendar.calendar_id,
+        period: '2026-07',
+        overall: 1000,
+        categories: [
+          { categoryId: category.body.category_id, amount: 100 },
+          { categoryId: 999999, amount: 50 },
+        ],
+      })
+      .expect(400);
+    const stored = await db.query('SELECT COUNT(*)::integer AS count FROM budget_limits');
+    expect(stored.rows[0].count).toBe(0);
+  });
+
+  it('rejects duplicate budget categories and unknown request fields', async () => {
+    const session = await registerVerifyLogin('validation-user', 'validation@example.com');
+    const calendar = await createCalendar(session);
+    await post(session.agent, '/calendars', { name: 'Extra', unknown: true }, session.csrfToken)
+      .expect(400);
+    await session.agent.put('/budget-limits')
+      .set('X-CSRF-Token', session.csrfToken)
+      .send({
+        calendarId: calendar.calendar_id,
+        period: '2026-07',
+        categories: [{ categoryId: 1, amount: 10 }, { categoryId: 1, amount: 20 }],
       })
       .expect(400);
   });
@@ -491,5 +591,94 @@ describe('tenant resources with cookie authentication', () => {
     await session.agent
       .get(`/recurring-events?calendarId=${calendar.calendar_id}`)
       .expect(200, []);
+  });
+
+  it('enforces calendar, category, and recurring-definition quotas', async () => {
+    const session = await registerVerifyLogin('quota-user', 'quota@example.com');
+    const calendar = await createCalendar(session);
+    const userId = session.login.body.user.id;
+
+    await db.query(
+      `INSERT INTO calendars (user_id, name)
+       SELECT $1, 'Calendar ' || value FROM GENERATE_SERIES(1, 49) AS value`,
+      [userId]
+    );
+    let response = await post(session.agent, '/calendars', { name: 'Too many' }, session.csrfToken)
+      .expect(409);
+    expect(response.body.code).toBe('LIMIT_REACHED');
+
+    await db.query(
+      `INSERT INTO categories (calendar_id, name, color)
+       SELECT $1, 'Category ' || value, '#123456' FROM GENERATE_SERIES(1, 500) AS value`,
+      [calendar.calendar_id]
+    );
+    response = await post(session.agent, '/categories', {
+      calendarId: calendar.calendar_id,
+      name: 'Too many',
+      color: '#654321',
+    }, session.csrfToken).expect(409);
+    expect(response.body.code).toBe('LIMIT_REACHED');
+
+    await db.query(
+      `INSERT INTO recurring_events (
+         calendar_id, title, start_date, time_start, time_end, budget, frequency, interval_count
+       )
+       SELECT $1, 'Recurring ' || value, DATE '2026-01-01', TIME '09:00', TIME '10:00', 0, 'daily', 1
+       FROM GENERATE_SERIES(1, 500) AS value`,
+      [calendar.calendar_id]
+    );
+    response = await post(session.agent, '/recurring-events', {
+      calendarId: calendar.calendar_id,
+      title: 'Too many',
+      startDate: '2026-01-01',
+      timeStart: '09:00',
+      timeEnd: '10:00',
+      frequency: 'daily',
+      interval: 1,
+    }, session.csrfToken).expect(409);
+    expect(response.body.code).toBe('LIMIT_REACHED');
+  });
+});
+
+describe('mail outbox coordination', () => {
+  it('allows only one worker to claim a queued job', async () => {
+    const agent = request.agent(app);
+    const token = await csrf(agent);
+    await post(agent, '/auth/register', {
+      username: 'worker-user',
+      email: 'worker@example.com',
+      password: testPassword,
+    }, token).expect(202);
+
+    const first = createMailOutboxRepository(db);
+    const second = createMailOutboxRepository(db);
+    const claims = await Promise.all([first.claimBatch(10), second.claimBatch(10)]);
+    expect(claims.flat()).toHaveLength(1);
+  });
+
+  it('redacts token payloads after successful delivery and terminal failure', async () => {
+    const agent = request.agent(app);
+    const token = await csrf(agent);
+    await post(agent, '/auth/register', {
+      username: 'redact-user',
+      email: 'redact@example.com',
+      password: testPassword,
+    }, token).expect(202);
+    const repository = createMailOutboxRepository(db);
+    const [job] = await repository.claimBatch(1);
+    await repository.markSent(job.id);
+    let stored = await db.query('SELECT payload, sent_at FROM mail_outbox WHERE id = $1', [job.id]);
+    expect(stored.rows[0].payload).toEqual({});
+    expect(stored.rows[0].sent_at).not.toBeNull();
+
+    await db.query(
+      `INSERT INTO mail_outbox (type, recipient, payload, attempts, max_attempts)
+       VALUES ('password_reset', 'terminal@example.com', '{"token":"secret"}', 7, 8)`
+    );
+    const [terminal] = await repository.claimBatch(1);
+    await repository.markFailed(terminal, 'permanent failure', 3600);
+    stored = await db.query('SELECT payload, failed_at FROM mail_outbox WHERE id = $1', [terminal.id]);
+    expect(stored.rows[0].payload).toEqual({});
+    expect(stored.rows[0].failed_at).not.toBeNull();
   });
 });

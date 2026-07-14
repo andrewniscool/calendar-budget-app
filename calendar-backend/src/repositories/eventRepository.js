@@ -33,7 +33,8 @@ export function createEventRepository(db) {
         `${eventSelect}
          JOIN calendars cal ON cal.calendar_id = e.calendar_id
          WHERE ${filters.join(' AND ')}
-         ORDER BY e.date, e.time_start`,
+         ORDER BY e.date, e.time_start
+         ${!startDate || !endDate ? 'LIMIT 1001' : ''}`,
         values
       );
       return result.rows;
@@ -72,7 +73,8 @@ export function createEventRepository(db) {
              time_start = $3,
              time_end = $4,
              category_id = $5,
-             budget = $6
+             budget = $6,
+             updated_at = CURRENT_TIMESTAMP
          WHERE e.id = $7
            AND EXISTS (
              SELECT 1 FROM calendars

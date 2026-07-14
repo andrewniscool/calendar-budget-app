@@ -26,18 +26,19 @@ import { createRecurringEventController } from './controllers/recurringEventCont
 import { createAuthenticate } from './middleware/authMiddleware.js';
 import { createCsrfProtection } from './middleware/authMiddleware.js';
 import { requestContext } from './middleware/requestContext.js';
-import { createMailService } from './services/mailService.js';
+import { createLogger } from './logger.js';
 import { errorHandler, forbidden, notFoundHandler } from './errors.js';
 import { registerRoutes } from './routes.js';
 
-export function createApp({ db, config, mailService = createMailService(config) }) {
+export function createApp({ db, config, logger = createLogger() }) {
   const app = express();
+  app.locals.logger = logger;
   const userRepository = createUserRepository(db);
   const authenticate = createAuthenticate(userRepository, config);
   const csrfProtection = createCsrfProtection(config);
 
   const userController = createUserController(
-    createAuthService(userRepository, mailService, config),
+    createAuthService(userRepository, config),
     config
   );
   const calendarController = createCalendarController(
@@ -70,9 +71,32 @@ export function createApp({ db, config, mailService = createMailService(config) 
       code: 'RATE_LIMITED',
     },
   });
+  const sensitiveAuthLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: config.SENSITIVE_RATE_LIMIT_MAX,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: {
+      error: 'Too many sensitive account requests',
+      message: 'Too many sensitive account requests',
+      code: 'RATE_LIMITED',
+    },
+  });
+  const globalLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: config.GLOBAL_RATE_LIMIT_MAX,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: {
+      error: 'Too many requests',
+      message: 'Too many requests',
+      code: 'RATE_LIMITED',
+    },
+  });
 
   app.disable('x-powered-by');
-  app.use(requestContext({ logRequests: config.NODE_ENV !== 'test' }));
+  if (config.TRUST_PROXY_HOPS > 0) app.set('trust proxy', config.TRUST_PROXY_HOPS);
+  app.use(requestContext({ logger, logRequests: config.NODE_ENV !== 'test' }));
   app.use(helmet());
   app.use(cors({
     origin(origin, callback) {
@@ -84,12 +108,14 @@ export function createApp({ db, config, mailService = createMailService(config) 
     allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
   }));
   app.use(express.json({ limit: '100kb' }));
+  app.use(globalLimiter);
   app.use(csrfProtection);
 
   registerRoutes(app, {
     db,
     authenticate,
     authLimiter,
+    sensitiveAuthLimiter,
     userController,
     calendarController,
     calendarSettingsController,

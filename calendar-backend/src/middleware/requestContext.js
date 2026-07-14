@@ -1,8 +1,8 @@
 import crypto from 'node:crypto';
 
-export function requestContext({ logRequests = true } = {}) {
+export function requestContext({ logger, logRequests = true } = {}) {
   return (req, res, next) => {
-    const requestId = req.get('x-request-id') || crypto.randomUUID();
+    const requestId = crypto.randomUUID();
     req.requestId = requestId;
     res.setHeader('X-Request-Id', requestId);
 
@@ -10,13 +10,13 @@ export function requestContext({ logRequests = true } = {}) {
 
     const started = Date.now();
     res.on('finish', () => {
-      console.log(JSON.stringify({
+      logger.info('http.request', {
         requestId,
         method: req.method,
-        path: req.path,
+        route: req.route?.path ?? 'unmatched',
         status: res.statusCode,
         durationMs: Date.now() - started,
-      }));
+      });
     });
     next();
   };

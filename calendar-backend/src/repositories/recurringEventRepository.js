@@ -1,3 +1,5 @@
+import { withTransaction } from '../db.js';
+
 const recurringSelect = `
   SELECT re.*, c.name AS category_name, c.color AS category_color
   FROM recurring_events re
@@ -28,8 +30,10 @@ export function createRecurringEventRepository(db) {
     },
 
     async create(data, userId) {
-      const inserted = await db.query(
-        `INSERT INTO recurring_events (
+      return withTransaction(db, async (client) => {
+        await client.query('SELECT pg_advisory_xact_lock(1003, $1)', [data.calendarId]);
+        const inserted = await client.query(
+          `INSERT INTO recurring_events (
            calendar_id, category_id, title, start_date, end_date,
            time_start, time_end, budget, frequency, interval_count
          )
@@ -37,23 +41,31 @@ export function createRecurringEventRepository(db) {
          WHERE EXISTS (
            SELECT 1 FROM calendars WHERE calendar_id = $1 AND user_id = $11
          )
+           AND (SELECT COUNT(*) FROM recurring_events WHERE calendar_id = $1) < 500
          RETURNING id`,
-        [
-          data.calendarId,
-          data.categoryId ?? null,
-          data.title,
-          data.startDate,
-          data.endDate ?? null,
-          data.timeStart,
-          data.timeEnd,
-          data.budget,
-          data.frequency,
-          data.interval,
-          userId,
-        ]
-      );
-      if (!inserted.rows[0]) return undefined;
-      return this.findById(inserted.rows[0].id, userId);
+          [
+            data.calendarId,
+            data.categoryId ?? null,
+            data.title,
+            data.startDate,
+            data.endDate ?? null,
+            data.timeStart,
+            data.timeEnd,
+            data.budget,
+            data.frequency,
+            data.interval,
+            userId,
+          ]
+        );
+        if (!inserted.rows[0]) return undefined;
+        const result = await client.query(
+          `${recurringSelect}
+           JOIN calendars cal ON cal.calendar_id = re.calendar_id
+           WHERE re.id = $1 AND cal.user_id = $2`,
+          [inserted.rows[0].id, userId]
+        );
+        return result.rows[0];
+      });
     },
 
     async update(id, userId, data) {
@@ -121,6 +133,14 @@ export function createRecurringEventRepository(db) {
         [id, userId]
       );
       return result.rows[0];
+    },
+
+    async count(calendarId) {
+      const result = await db.query(
+        'SELECT COUNT(*)::integer AS count FROM recurring_events WHERE calendar_id = $1',
+        [calendarId]
+      );
+      return result.rows[0].count;
     },
   };
 }

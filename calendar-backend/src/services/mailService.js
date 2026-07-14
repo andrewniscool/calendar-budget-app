@@ -9,6 +9,8 @@ export function createMailService(config) {
         auth: config.SMTP_USER
           ? { user: config.SMTP_USER, pass: config.SMTP_PASS }
           : undefined,
+        connectionTimeout: config.SMTP_CONNECTION_TIMEOUT_MS,
+        socketTimeout: config.SMTP_SOCKET_TIMEOUT_MS,
       })
     : nodemailer.createTransport({ jsonTransport: true });
 
@@ -19,25 +21,28 @@ export function createMailService(config) {
       subject,
       text,
     });
-    if (config.MAIL_MODE === 'log') console.log(`Development email: ${result.message}`);
+    return result;
   }
 
   return {
-    sendVerification(email, token) {
-      const url = `${config.APP_ORIGIN}/?verify=${encodeURIComponent(token)}`;
-      return send({
-        to: email,
-        subject: 'Verify your Calendar Budget account',
-        text: `Verify your email address: ${url}`,
-      });
-    },
-    sendPasswordReset(email, token) {
-      const url = `${config.APP_ORIGIN}/?reset=${encodeURIComponent(token)}`;
-      return send({
-        to: email,
-        subject: 'Reset your Calendar Budget password',
-        text: `Reset your password: ${url}`,
-      });
+    sendJob(job) {
+      if (job.type === 'email_verification') {
+        const url = `${config.APP_ORIGIN}/?verify=${encodeURIComponent(job.payload.token)}`;
+        return send({
+          to: job.recipient,
+          subject: 'Verify your Calendar Budget account',
+          text: `Verify your email address: ${url}`,
+        });
+      }
+      if (job.type === 'password_reset') {
+        const url = `${config.APP_ORIGIN}/?reset=${encodeURIComponent(job.payload.token)}`;
+        return send({
+          to: job.recipient,
+          subject: 'Reset your Calendar Budget password',
+          text: `Reset your password: ${url}`,
+        });
+      }
+      throw new Error(`Unsupported mail job type: ${job.type}`);
     },
   };
 }

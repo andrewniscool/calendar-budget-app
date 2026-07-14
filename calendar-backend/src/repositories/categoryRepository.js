@@ -1,3 +1,5 @@
+import { withTransaction } from '../db.js';
+
 export function createCategoryRepository(db) {
   return {
     async list(calendarId, userId) {
@@ -13,22 +15,26 @@ export function createCategoryRepository(db) {
     },
 
     async create({ name, color, calendarId, userId }) {
-      const result = await db.query(
-        `INSERT INTO categories (calendar_id, name, color)
-         SELECT $1, $2, $3
-         WHERE EXISTS (
-           SELECT 1 FROM calendars WHERE calendar_id = $1 AND user_id = $4
-         )
-         RETURNING category_id, name, color`,
-        [calendarId, name, color, userId]
-      );
-      return result.rows[0];
+      return withTransaction(db, async (client) => {
+        await client.query('SELECT pg_advisory_xact_lock(1002, $1)', [calendarId]);
+        const result = await client.query(
+          `INSERT INTO categories (calendar_id, name, color)
+           SELECT $1, $2, $3
+           WHERE EXISTS (
+             SELECT 1 FROM calendars WHERE calendar_id = $1 AND user_id = $4
+           )
+             AND (SELECT COUNT(*) FROM categories WHERE calendar_id = $1) < 500
+           RETURNING category_id, name, color`,
+          [calendarId, name, color, userId]
+        );
+        return result.rows[0];
+      });
     },
 
     async update(categoryId, { name, color, calendarId, userId }) {
       const result = await db.query(
         `UPDATE categories c
-         SET name = $1, color = $2
+         SET name = $1, color = $2, updated_at = CURRENT_TIMESTAMP
          WHERE c.category_id = $3
            AND c.calendar_id = $4
            AND EXISTS (
@@ -75,6 +81,14 @@ export function createCategoryRepository(db) {
         [calendarId, userId]
       );
       return result.rowCount > 0;
+    },
+
+    async count(calendarId) {
+      const result = await db.query(
+        'SELECT COUNT(*)::integer AS count FROM categories WHERE calendar_id = $1',
+        [calendarId]
+      );
+      return result.rows[0].count;
     },
   };
 }

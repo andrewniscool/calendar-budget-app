@@ -14,12 +14,14 @@ export function createUserController(authService, config) {
       ...authCookies(config, session.accessToken, session.refreshToken),
       csrfCookie(config, csrf),
     ]);
+    res.setHeader('Cache-Control', 'no-store');
   }
 
   return {
     csrf(_req, res) {
       const token = createCsrfToken(config.CSRF_SECRET);
       res.setHeader('Set-Cookie', csrfCookie(config, token));
+      res.setHeader('Cache-Control', 'no-store');
       res.json({ csrfToken: token });
     },
 
@@ -67,10 +69,6 @@ export function createUserController(authService, config) {
       const result = await authService.resetPassword(req.body);
       res.setHeader('Set-Cookie', clearedAuthCookies(config));
       res.json(result);
-    },
-
-    async legacyEmail(req, res) {
-      res.status(202).json(await authService.enrollLegacyEmail(req.body));
     },
   };
 }

@@ -17,6 +17,23 @@ function toMinutes(timeStr) {
   return h * 60 + m;
 }
 
+function parseTimeInput(input) {
+  const match = String(input || "").trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i);
+  if (!match) return null;
+  let hour = Number(match[1]);
+  const minute = Number(match[2] ?? "0");
+  const meridiem = match[3]?.toLowerCase();
+  if (minute > 59) return null;
+  if (meridiem) {
+    if (hour < 1 || hour > 12) return null;
+    if (hour === 12) hour = 0;
+    if (meridiem === "pm") hour += 12;
+  } else if (hour > 23) {
+    return null;
+  }
+  return hour * 60 + minute;
+}
+
 function toHHMM(minutes) {
   const clamped = Math.max(0, Math.min(minutes, 23 * 60 + 59));
   return `${String(Math.floor(clamped / 60)).padStart(2, "0")}:${String(clamped % 60).padStart(2, "0")}`;
@@ -106,18 +123,22 @@ function positionNearAnchor(anchorRect, modalRect) {
   const viewportHeight = window.innerHeight;
   const maxLeft = Math.max(viewportWidth - modalRect.width - MODAL_PADDING, MODAL_PADDING);
   const maxTop = Math.max(viewportHeight - modalRect.height - MODAL_PADDING, MODAL_PADDING);
-  const centeredTop = anchorRect.top + anchorRect.height / 2 - modalRect.height / 2;
+  const alignedTop = anchorRect.top;
+  const leftSide = anchorRect.left - modalRect.width - MODAL_GAP;
+  const rightSide = anchorRect.right + MODAL_GAP;
 
   const candidates = [
     {
-      top: centeredTop,
-      left: anchorRect.right + MODAL_GAP,
-      fits: anchorRect.right + MODAL_GAP + modalRect.width <= viewportWidth - MODAL_PADDING,
+      top: alignedTop,
+      left: leftSide,
+      // Prefer the left side, keeping the modal completely outside the
+      // clicked block's rectangle.
+      fits: leftSide >= MODAL_PADDING,
     },
     {
-      top: centeredTop,
-      left: anchorRect.left - modalRect.width - MODAL_GAP,
-      fits: anchorRect.left - modalRect.width - MODAL_GAP >= MODAL_PADDING,
+      top: alignedTop,
+      left: rightSide,
+      fits: rightSide + modalRect.width <= viewportWidth - MODAL_PADDING,
     },
     {
       top: anchorRect.bottom + MODAL_GAP,
@@ -171,9 +192,15 @@ function FieldLabel({ children }) {
   );
 }
 
-function TimeField({ value, options, onSelect, ariaLabel }) {
+function TimeField({ value, options, onSelect, ariaLabel, error, onValidityChange }) {
   const { ref, open, setOpen, dropUp, toggle } = usePopover();
   const listRef = useRef(null);
+  const [draft, setDraft] = useState(() => timeLabel(toMinutes(value)));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setDraft(timeLabel(toMinutes(value)));
+  }, [value, focused]);
 
   useEffect(() => {
     if (open) {
@@ -185,17 +212,49 @@ function TimeField({ value, options, onSelect, ariaLabel }) {
 
   return (
     <div ref={ref} className="relative min-w-0 flex-1">
-      <button
-        type="button"
-        onClick={toggle}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={ariaLabel}
-        className={FIELD_BUTTON}
-      >
-        <span className="truncate tabular-nums">{timeLabel(toMinutes(value))}</span>
-        <ChevronDownIcon />
-      </button>
+      <div className="relative">
+        <input
+          type="text"
+          value={draft}
+          aria-label={ariaLabel}
+          aria-invalid={Boolean(error)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => {
+            setFocused(false);
+            const parsed = parseTimeInput(draft);
+            if (parsed === null) {
+              onValidityChange?.("Input a valid time");
+            } else {
+              setDraft(timeLabel(parsed));
+              onValidityChange?.("");
+            }
+          }}
+          onChange={(event) => {
+            const next = event.target.value;
+            setDraft(next);
+            const parsed = parseTimeInput(next);
+            if (parsed === null) {
+              onValidityChange?.("Input a valid time");
+            } else {
+              onSelect(toHHMM(parsed));
+              onValidityChange?.("");
+            }
+          }}
+          className={`${FIELD_INPUT} pr-9 ${error ? "border-red-400 bg-red-50/40 text-red-900 focus:border-red-500 focus:ring-red-200/60" : ""}`}
+        />
+        <button
+          type="button"
+          onClick={toggle}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label={`${ariaLabel} options`}
+          title="Choose a time"
+          className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-slate-400 transition-colors hover:text-slate-700"
+        >
+          <ChevronDownIcon />
+        </button>
+      </div>
+      {error && <p className="mt-1 text-[11px] font-medium text-red-600">{error}</p>}
       {open && (
         <div
           ref={listRef}
@@ -213,6 +272,8 @@ function TimeField({ value, options, onSelect, ariaLabel }) {
                 data-selected={isSelected || undefined}
                 onClick={() => {
                   onSelect(opt.value);
+                  setDraft(timeLabel(toMinutes(opt.value)));
+                  onValidityChange?.("");
                   setOpen(false);
                 }}
                 className={`flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-sm tabular-nums ${
@@ -425,6 +486,8 @@ const EventModal = forwardRef(function EventModal({
   const [budget, setBudget] = useState("");
   const [timeStart, setTimeStart] = useState("");
   const [timeEnd, setTimeEnd] = useState("");
+  const [startTimeError, setStartTimeError] = useState("");
+  const [endTimeError, setEndTimeError] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState(editingEvent?.date || new Date().toISOString().split("T")[0]);
   const [renderPos, setRenderPos] = useState(null);
@@ -484,6 +547,8 @@ const EventModal = forwardRef(function EventModal({
 
   useEffect(() => {
     if (isOpen) {
+      setStartTimeError("");
+      setEndTimeError("");
       if (editingEvent) {
         setDate(new Date(editingEvent.date).toISOString().split("T")[0]);
         setTitle(editingEvent.title || "");
@@ -531,6 +596,7 @@ const EventModal = forwardRef(function EventModal({
 
   function handleSubmit(e) {
     e.preventDefault();
+    if (startTimeError || endTimeError) return;
     onSave({ title, date, budget, timeStart, timeEnd, categoryId });
     closeModal();
   }
@@ -553,6 +619,7 @@ const EventModal = forwardRef(function EventModal({
     const duration = rawDuration >= 15 ? rawDuration : 60;
     setTimeStart(newStart);
     setTimeEnd(toHHMM(Math.min(toMinutes(newStart) + duration, LAST_END)));
+    setEndTimeError("");
   }
 
   const startMin = toMinutes(timeStart);
@@ -679,6 +746,8 @@ const EventModal = forwardRef(function EventModal({
                       value={timeStart}
                       options={startOptions}
                       onSelect={handleStartSelect}
+                      error={startTimeError}
+                      onValidityChange={setStartTimeError}
                     />
                     <span className="shrink-0 text-sm text-slate-400">–</span>
                     <TimeField
@@ -686,6 +755,8 @@ const EventModal = forwardRef(function EventModal({
                       value={timeEnd}
                       options={endOptions}
                       onSelect={setTimeEnd}
+                      error={endTimeError}
+                      onValidityChange={setEndTimeError}
                     />
                   </div>
                 </div>

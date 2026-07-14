@@ -38,8 +38,3 @@ export async function resetPassword(token, password) {
   const response = await api.post('/auth/reset-password', { token, password });
   return response.data;
 }
-
-export async function enrollLegacyEmail(username, password, email) {
-  const response = await api.post('/auth/legacy-email', { username, password, email });
-  return response.data;
-}

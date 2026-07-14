@@ -15,95 +15,114 @@ const email = z.string().trim().email().max(254).transform((value) => value.toLo
 const password = z.string().min(8).max(72);
 const accountToken = z.string().min(32).max(200);
 const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Period must use YYYY-MM format');
-const amount = z.coerce.number().nonnegative();
-const timezone = z.string().trim().min(1).max(64);
+const amount = z.coerce.number()
+  .nonnegative()
+  .max(999_999_999_999.99)
+  .refine(
+    (value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-6,
+    'Amount must use at most two decimal places'
+  );
+const timezone = z.string().trim().min(1).max(64).refine((value) => {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value }).format();
+    return true;
+  } catch {
+    return false;
+  }
+}, 'Timezone must be a valid IANA timezone');
 const currency = z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, 'Currency must be a three-letter ISO code');
 const recurrenceFrequency = z.enum(['daily', 'weekly', 'monthly']);
+const strictObject = (shape) => z.object(shape).strict();
+
+function daysBetween(start, end) {
+  return (Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000;
+}
 
 export const schemas = {
-  register: z.object({
+  register: strictObject({
     username: nonEmptyText('Username', 50).min(3, 'Username must be at least 3 characters'),
     email,
     password,
   }),
-  login: z.object({
+  login: strictObject({
     email,
     password: z.string().min(1).max(72),
   }),
-  verifyEmail: z.object({ token: accountToken }),
-  emailOnly: z.object({ email }),
-  resetPassword: z.object({ token: accountToken, password }),
-  legacyEmail: z.object({
-    username: nonEmptyText('Username', 50),
-    password: z.string().min(1).max(72),
-    email,
-  }),
-  calendarCreate: z.object({
+  verifyEmail: strictObject({ token: accountToken }),
+  emailOnly: strictObject({ email }),
+  resetPassword: strictObject({ token: accountToken, password }),
+  calendarCreate: strictObject({
     name: nonEmptyText('Calendar name', 100),
   }),
-  categoryQuery: z.object({ calendarId: positiveId }),
-  categoryCreate: z.object({
+  categoryQuery: strictObject({ calendarId: positiveId }),
+  categoryCreate: strictObject({
     name: nonEmptyText('Category name', 100),
     color,
     calendarId: positiveId,
   }),
-  categoryUpdate: z.object({
+  categoryUpdate: strictObject({
     name: nonEmptyText('Category name', 100),
     color,
     calendarId: positiveId,
   }),
-  eventQuery: z.object({
+  eventQuery: strictObject({
     calendarId: positiveId,
     startDate: date.optional(),
     endDate: date.optional(),
   }).refine((value) => !value.startDate || !value.endDate || value.endDate >= value.startDate, {
     message: 'endDate must be on or after startDate',
     path: ['endDate'],
+  }).refine((value) => !value.startDate || !value.endDate || daysBetween(value.startDate, value.endDate) <= 366, {
+    message: 'Event date range cannot exceed 366 days',
+    path: ['endDate'],
   }),
-  eventCreate: z.object({
+  eventCreate: strictObject({
     title: nonEmptyText('Title', 200),
     date,
     timeStart: time,
     timeEnd: time,
     categoryId: positiveId.nullish(),
-    budget: z.coerce.number().nonnegative().default(0),
+    budget: amount.default(0),
     calendarId: positiveId,
   }).refine((value) => value.timeEnd > value.timeStart, {
     message: 'timeEnd must be after timeStart',
     path: ['timeEnd'],
   }),
-  eventUpdate: z.object({
+  eventUpdate: strictObject({
     title: nonEmptyText('Title', 200),
     date,
     timeStart: time,
     timeEnd: time,
     categoryId: positiveId.nullish(),
-    budget: z.coerce.number().nonnegative().default(0),
+    budget: amount.default(0),
     calendarId: positiveId.optional(),
   }).refine((value) => value.timeEnd > value.timeStart, {
     message: 'timeEnd must be after timeStart',
     path: ['timeEnd'],
   }),
-  idParams: z.object({ id: positiveId }),
-  budgetLimitQuery: z.object({
+  idParams: strictObject({ id: positiveId }),
+  budgetLimitQuery: strictObject({
     calendarId: positiveId,
     period: month,
   }),
-  budgetLimitUpsert: z.object({
+  budgetLimitUpsert: strictObject({
     calendarId: positiveId,
     period: month,
     overall: amount.nullish(),
-    categories: z.array(z.object({
+    categories: z.array(strictObject({
       categoryId: positiveId,
       amount,
-    })).default([]),
+    })).max(500).default([]),
+  }).refine((value) => new Set(value.categories.map((item) => item.categoryId)).size === value.categories.length, {
+    message: 'Budget category IDs must be unique',
+    path: ['categories'],
   }),
-  calendarSettings: z.object({
+  calendarSettings: strictObject({
     timezone,
     currency,
   }),
-  recurringQuery: z.object({ calendarId: positiveId }),
-  recurringCreate: z.object({
+  recurringQuery: strictObject({ calendarId: positiveId }),
+  recurringCreate: strictObject({
     calendarId: positiveId,
     categoryId: positiveId.nullish(),
     title: nonEmptyText('Title', 200),
@@ -113,7 +132,7 @@ export const schemas = {
     timeEnd: time,
     budget: amount.default(0),
     frequency: recurrenceFrequency,
-    interval: z.coerce.number().int().positive().default(1),
+    interval: z.coerce.number().int().positive().max(365).default(1),
   }).refine((value) => value.timeEnd > value.timeStart, {
     message: 'timeEnd must be after timeStart',
     path: ['timeEnd'],
@@ -121,7 +140,7 @@ export const schemas = {
     message: 'endDate must be on or after startDate',
     path: ['endDate'],
   }),
-  recurringUpdate: z.object({
+  recurringUpdate: strictObject({
     calendarId: positiveId,
     categoryId: positiveId.nullish(),
     title: nonEmptyText('Title', 200),
@@ -131,7 +150,7 @@ export const schemas = {
     timeEnd: time,
     budget: amount.default(0),
     frequency: recurrenceFrequency,
-    interval: z.coerce.number().int().positive().default(1),
+    interval: z.coerce.number().int().positive().max(365).default(1),
   }).refine((value) => value.timeEnd > value.timeStart, {
     message: 'timeEnd must be after timeStart',
     path: ['timeEnd'],
@@ -148,7 +167,15 @@ export function validate(schema, source = 'body') {
       const message = result.error.issues.map((issue) => issue.message).join(', ');
       return next(badRequest(message));
     }
-    Object.assign(req[source], result.data);
+    if (source === 'query') {
+      Object.defineProperty(req, 'query', {
+        configurable: true,
+        enumerable: true,
+        value: result.data,
+      });
+    } else {
+      req[source] = result.data;
+    }
     next();
   };
 }

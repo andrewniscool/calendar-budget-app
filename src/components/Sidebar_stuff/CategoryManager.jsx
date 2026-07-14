@@ -93,8 +93,8 @@ function CategoryList({ categories, onAddClick, handleDeleteCategory, toggleVisi
               {menuFor === cat.category_id && (
                 <div className="absolute right-0 top-full z-20 mt-0.5 w-32 rounded-md border border-slate-200 bg-white py-1 shadow-lg">
                   <button
-                    onClick={() => {
-                      onEditClick(cat);
+                    onClick={(e) => {
+                      onEditClick(cat, e);
                       setMenuFor(null);
                     }}
                     className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
@@ -127,6 +127,7 @@ function CategoryManager({ categories, setCategories, calendarId }) {
   const [showToast, setShowToast] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
+  const [modalAnchorRect, setModalAnchorRect] = useState(null);
 
   useEffect(() => {
     if (calendarId) {
@@ -173,6 +174,7 @@ function CategoryManager({ categories, setCategories, calendarId }) {
           setError("");
           setIsModalOpen(false);
           setEditingCategory(null);
+          setModalAnchorRect(null);
         })
         .catch((err) => {
           console.error("Error updating category:", err);
@@ -191,6 +193,7 @@ function CategoryManager({ categories, setCategories, calendarId }) {
         setCategories((prev) => [...prev, { ...created, visible: true }]);
         setError("");
         setIsModalOpen(false);
+        setModalAnchorRect(null);
       })
       .catch((err) => {
         console.error("Error creating category:", err);
@@ -229,12 +232,14 @@ function CategoryManager({ categories, setCategories, calendarId }) {
         categories={categories || []}
         handleDeleteCategory={handleDeleteCategory}
         toggleVisibility={toggleVisibility}
-        onAddClick={() => {
+        onAddClick={(event) => {
           setEditingCategory(null);
+          setModalAnchorRect(event?.currentTarget?.getBoundingClientRect() ?? null);
           setIsModalOpen(true);
         }}
-        onEditClick={(cat) => {
+        onEditClick={(cat, event) => {
           setEditingCategory(cat);
+          setModalAnchorRect(event?.currentTarget?.getBoundingClientRect() ?? null);
           setIsModalOpen(true);
         }}
       />
@@ -244,12 +249,14 @@ function CategoryManager({ categories, setCategories, calendarId }) {
         onClose={() => {
           setIsModalOpen(false);
           setEditingCategory(null);
+          setModalAnchorRect(null);
           setError("");
         }}
         onAddCategory={handleAddCategory}
         presetColors={presetColors}
         error={error}
         defaultValues={editingCategory}
+        anchorRect={modalAnchorRect}
       />
 
       {(categories || []).length > 0 && (
