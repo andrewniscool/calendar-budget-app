@@ -72,11 +72,11 @@ async function registerVerifyLogin(username = 'test-user', email = `${username}@
   return { agent, csrfToken: decodeURIComponent(csrfToken), login };
 }
 
-async function createCalendar(session, name = 'Primary') {
+async function createCalendar(session, name = 'Primary', color) {
   const response = await post(
     session.agent,
     '/calendars',
-    { name },
+    color ? { name, color } : { name },
     session.csrfToken
   ).expect(201);
   return response.body;
@@ -332,12 +332,29 @@ describe('tenant resources with cookie authentication', () => {
   it('isolates calendars and supports authenticated create/delete behavior', async () => {
     const first = await registerVerifyLogin('first-user', 'first@example.com');
     const second = await registerVerifyLogin('second-user', 'second@example.com');
-    const calendar = await createCalendar(first);
+    const calendar = await createCalendar(first, 'Primary', '#16A34A');
+
+    expect(calendar).toMatchObject({ name: 'Primary', color: '#16A34A' });
+    await first.agent.get('/calendars').expect(200).expect(({ body }) => {
+      expect(body).toHaveLength(1);
+      expect(body[0]).toMatchObject({ name: 'Primary', color: '#16A34A' });
+    });
 
     await second.agent.delete(`/calendars/${calendar.calendar_id}`)
       .set('X-CSRF-Token', second.csrfToken)
       .expect(404);
     await second.agent.get('/calendars').expect(200, []);
+  });
+
+  it('uses the default calendar color and rejects invalid colors', async () => {
+    const session = await registerVerifyLogin('color-user', 'color@example.com');
+    const calendar = await createCalendar(session);
+    expect(calendar.color).toBe('#2563EB');
+
+    await post(session.agent, '/calendars', {
+      name: 'Invalid',
+      color: 'blue',
+    }, session.csrfToken).expect(400);
   });
 
   it('retains category/calendar constraints for authenticated event writes', async () => {

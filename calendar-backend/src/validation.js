@@ -11,6 +11,7 @@ const date = z.string()
     return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
   }, 'Date must be valid');
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Color must be a six-digit hex value');
+const defaultCalendarColor = '#2563EB';
 const email = z.string().trim().email().max(254).transform((value) => value.toLowerCase());
 const password = z.string().min(8).max(72);
 const accountToken = z.string().min(32).max(200);
@@ -53,6 +54,7 @@ export const schemas = {
   resetPassword: strictObject({ token: accountToken, password }),
   calendarCreate: strictObject({
     name: nonEmptyText('Calendar name', 100),
+    color: color.default(defaultCalendarColor),
   }),
   categoryQuery: strictObject({ calendarId: positiveId }),
   categoryCreate: strictObject({

@@ -57,6 +57,12 @@ describe('request schemas', () => {
     expect(schemas.eventCreate.safeParse(validEvent).success).toBe(true);
   });
 
+  it('defaults and validates calendar colors', () => {
+    expect(schemas.calendarCreate.parse({ name: 'Personal' }).color).toBe('#2563EB');
+    expect(schemas.calendarCreate.safeParse({ name: 'Work', color: '#16A34A' }).success).toBe(true);
+    expect(schemas.calendarCreate.safeParse({ name: 'Work', color: 'green' }).success).toBe(false);
+  });
+
   it('validates timezone, date windows, recurrence bounds, and duplicate categories', () => {
     expect(schemas.calendarSettings.safeParse({ timezone: 'Not/A_Timezone', currency: 'USD' }).success)
       .toBe(false);

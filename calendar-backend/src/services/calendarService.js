@@ -4,7 +4,7 @@ export function createCalendarService(repository) {
   return {
     list: (userId) => repository.list(userId),
     async create(userId, data) {
-      const created = await repository.create(userId, data.name);
+      const created = await repository.create(userId, data);
       if (!created && await repository.count(userId) >= 50) {
         throw limitReached('A user can have at most 50 calendars');
       }
