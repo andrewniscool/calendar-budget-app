@@ -1,10 +1,34 @@
 # Calendar Budget App
 
-This repo contains:
+Calendar Budget is a React single-page app for organizing calendars, timed
+events, categories, recurring event definitions, and monthly budget limits.
+Its API is an Express service backed by PostgreSQL; account verification and
+password-reset email are sent by a separate durable worker.
 
-- A Vite React frontend
-- An Express backend in `calendar-backend`
-- A Postgres database defined in `docker-compose.yml`
+## Architecture at a glance
+
+```text
+React + Vite (localhost:5173)
+  -> Axios client (cookies + CSRF header + one refresh retry)
+  -> Express API (localhost:3001)
+  -> PostgreSQL (localhost:5432)
+         ^
+         | mail_outbox table
+  mail worker -> SMTP, or JSON logs in development
+```
+
+The frontend lives in `src/` and is deliberately thin around API access:
+
+- `src/services/apiClient.js` creates the shared Axios client. It sends
+  cookies, obtains a CSRF token before unsafe requests, and refreshes an
+  expired access session once before replaying a request.
+- `src/services/` contains feature-level API wrappers used by components.
+- `src/components/` and `src/loginPage/` render the UI and hold UI state.
+- `calendar-backend/` is a standalone Node package containing the API,
+  database migrations, tests, and email worker.
+
+Read the [backend README](calendar-backend/README.md) for the HTTP contract,
+authentication flow, data model, and backend source map.
 
 ## Prereqs
 
@@ -126,6 +150,27 @@ Backend health endpoints:
 
 - `http://localhost:3001/health/live`
 - `http://localhost:3001/health/ready`
+
+## How a normal request works
+
+After login, the API stores the access and refresh tokens in `HttpOnly`
+cookies. Before a state-changing request, the frontend obtains a signed,
+readable `cb_csrf` cookie from `GET /auth/csrf` and mirrors that value in the
+`X-CSRF-Token` header. The server checks both the header/cookie match and the
+signature. The browser never reads an access or refresh token.
+
+The API returns JSON. A failed request uses this common shape:
+
+```json
+{
+  "error": "Human-readable explanation",
+  "message": "Human-readable explanation",
+  "code": "STABLE_ERROR_CODE",
+  "requestId": "uuid"
+}
+```
+
+`requestId` is useful when matching a browser error to backend JSON logs.
 
 ## Database commands
 

@@ -28,3 +28,6 @@ dist-ssr
 
 *.md
 !README.md
+!AGENTS.md
+!docs/
+!docs/**/*.md
