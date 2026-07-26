@@ -1,7 +1,7 @@
 export function createCategoryController(categoryService) {
   return {
     async list(req, res) {
-      res.json(await categoryService.list(req.user.id, req.query.calendarId));
+      res.json(await categoryService.list(req.user.id));
     },
 
     async create(req, res) {
@@ -14,10 +14,6 @@ export function createCategoryController(categoryService) {
 
     async remove(req, res) {
       res.json(await categoryService.remove(req.user.id, req.params.id));
-    },
-
-    async removeAll(req, res) {
-      res.json(await categoryService.removeAll(req.user.id, req.query.calendarId));
     },
   };
 }

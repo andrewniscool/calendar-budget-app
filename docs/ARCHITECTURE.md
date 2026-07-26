@@ -9,8 +9,8 @@ Tailwind utility classes plus CSS in `src/index.css` and
 `src/main.jsx` mounts `src/App.jsx`. `App` restores the cookie session or shows
 login/signup/account-action screens, then renders `src/CalendarList.jsx`.
 CalendarList currently selects one calendar and mounts `src/MainApp.jsx`.
-MainApp owns selected date/view, fetched events, modal state, categories, and
-in-memory budget limits.
+MainApp owns selected date/view, fetched events, modal state, shared user
+categories, persisted monthly budget limits, and the user financial currency.
 
 `src/components/Calendar.jsx` selects the day, week, month, or year component.
 `DayView.jsx` and `WeekView.jsx` use `timeGrid.js`; `EventBlock.jsx` is shared
@@ -38,8 +38,11 @@ rate limits. Verification/reset email is persisted to `mail_outbox` and sent by
 the separate worker.
 
 The PostgreSQL schema is in `calendar-backend/migrations/`. Users own calendars;
-calendars own settings, categories, events, budget limits, and recurrence
-definitions. Events currently require date/start/end and store a non-null
+calendars own timezone settings, events, and recurrence definitions. Users own
+shared financial categories, monthly budget limits, and financial currency
+settings. Events and recurring definitions carry an owner key so PostgreSQL
+can enforce that their calendar and optional category have the same tenant.
+Events currently require date/start/end and store a non-null
 `budget` defaulting to zero; category is nullable. Recurrence definitions are
 not materialized event rows.
 

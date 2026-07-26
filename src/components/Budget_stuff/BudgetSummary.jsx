@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import dayjs from 'dayjs';
+import { formatCurrency } from '../../utils/currency';
 
-const BudgetSummary = ({ events, categories, selectedDate, viewMode }) => {
+const BudgetSummary = ({ events, categories, selectedDate, viewMode, currency }) => {
   const [showDetails, setShowDetails] = useState(false);
 
   const budgetData = useMemo(() => {
@@ -30,18 +31,22 @@ const BudgetSummary = ({ events, categories, selectedDate, viewMode }) => {
 
     filteredEvents.forEach(event => {
       const budget = parseFloat(event.budget) || 0;
-      const category = event.categoryName || 'Uncategorized';
+      const categoryId = event.categoryId ? String(event.categoryId) : "uncategorized";
+      const category = categories.find(
+        (item) => String(item.category_id) === categoryId
+      );
 
-      if (!categoryTotals[category]) {
-        categoryTotals[category] = {
+      if (!categoryTotals[categoryId]) {
+        categoryTotals[categoryId] = {
+          name: category?.name || event.categoryName || 'Uncategorized',
           total: 0,
           events: [],
-          color: event.categoryColor || categories.find(c => c.name === category)?.color || '#94a3b8'
+          color: category?.color || event.categoryColor || '#94a3b8'
         };
       }
 
-      categoryTotals[category].total += budget;
-      categoryTotals[category].events.push(event);
+      categoryTotals[categoryId].total += budget;
+      categoryTotals[categoryId].events.push(event);
       totalSpending += budget;
     });
 
@@ -84,15 +89,15 @@ const BudgetSummary = ({ events, categories, selectedDate, viewMode }) => {
         </span>
       </div>
       <div className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">
-        ${budgetData.totalSpending.toFixed(2)}
+        {formatCurrency(budgetData.totalSpending, currency)}
       </div>
 
       {/* Category breakdown */}
       {sortedCategories.length > 0 && (
         <div className="mt-2 space-y-0.5">
-          {sortedCategories.map(([categoryName, data]) => (
+          {sortedCategories.map(([categoryId, data]) => (
             <div
-              key={categoryName}
+              key={categoryId}
               className="-mx-1 flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-slate-200/60"
             >
               <span
@@ -100,13 +105,13 @@ const BudgetSummary = ({ events, categories, selectedDate, viewMode }) => {
                 style={{ backgroundColor: data.color }}
               />
               <span className="min-w-0 flex-1 truncate text-xs font-medium text-slate-700">
-                {categoryName}
+                {data.name}
               </span>
               <span className="shrink-0 text-[11px] tabular-nums text-slate-400">
                 {data.events.length}
               </span>
               <span className="shrink-0 text-xs font-medium tabular-nums text-slate-900">
-                ${data.total.toFixed(2)}
+                {formatCurrency(data.total, currency)}
               </span>
             </div>
           ))}
@@ -130,10 +135,10 @@ const BudgetSummary = ({ events, categories, selectedDate, viewMode }) => {
       {showDetails && (
         <div className="mt-2 max-h-60 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
           {Object.entries(budgetData.categoryTotals)
-            .flatMap(([categoryName, data]) =>
+            .flatMap(([, data]) =>
               data.events.map(event => ({
                 ...event,
-                categoryName,
+                categoryName: data.name,
                 categoryColor: data.color
               }))
             )
@@ -151,7 +156,7 @@ const BudgetSummary = ({ events, categories, selectedDate, viewMode }) => {
                   </div>
                 </div>
                 <div className="shrink-0 text-xs font-medium tabular-nums text-slate-900">
-                  ${parseFloat(event.budget || 0).toFixed(2)}
+                  {formatCurrency(event.budget, currency)}
                 </div>
               </div>
             ))}

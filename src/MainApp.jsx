@@ -5,6 +5,11 @@ import Sidebar from "./components/Sidebar";
 import Calendar from "./components/Calendar";
 import { fetchCategories } from "./services/categoryService";
 import { deleteEvent, fetchEvents, saveEvent } from "./services/eventService";
+import { fetchBudgetLimits, saveBudgetLimits } from "./services/budgetLimitService";
+import { fetchFinancialSettings } from "./services/financialSettingsService";
+
+const ENABLE_CALENDAR_GUIDANCE =
+  "Enable a calendar in the sidebar before adding an event.";
 
 function mapEventFromApi(event, calendar) {
   return {
@@ -43,12 +48,11 @@ function MainApp({ calendars, onCreateCalendar, onDeleteCalendar, onLogout }) {
   const [viewMode, setViewMode] = useState("week");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [budgetLimits, setBudgetLimits] = useState({
-    overall: 1000,
-    Work: 300,
-    Food: 200,
-    Study: 150,
-    Uncategorized: 100,
+    period: dayjs().format("YYYY-MM"),
+    overall: null,
+    categories: [],
   });
+  const [currency, setCurrency] = useState("USD");
 
   useEffect(() => {
     const currentIds = new Set(calendars.map((calendar) => calendar.calendar_id));
@@ -68,41 +72,36 @@ function MainApp({ calendars, onCreateCalendar, onDeleteCalendar, onLogout }) {
   }, [calendars]);
 
   const loadWorkspaceData = useCallback(async () => {
-    if (calendars.length === 0) {
-      setEvents([]);
-      setCategories([]);
-      setWorkspaceError("");
-      return;
-    }
-
     setWorkspaceLoading(true);
     setWorkspaceError("");
-    const results = await Promise.allSettled(
-      calendars.map(async (calendar) => {
-        const [calendarEvents, calendarCategories] = await Promise.all([
-          fetchEvents(calendar.calendar_id),
-          fetchCategories(calendar.calendar_id),
-        ]);
-        return {
-          events: calendarEvents.map((event) => mapEventFromApi(event, calendar)),
-          categories: calendarCategories.map((category) => ({
-            ...category,
-            calendarId: calendar.calendar_id,
-            visible: true,
-          })),
-        };
-      })
-    );
+    const [categoryResult, settingsResult, ...eventResults] = await Promise.allSettled([
+      fetchCategories(),
+      fetchFinancialSettings(),
+      ...calendars.map((calendar) => fetchEvents(calendar.calendar_id)),
+    ]);
 
-    const fulfilled = results.filter((result) => result.status === "fulfilled");
-    setEvents(fulfilled.flatMap((result) => result.value.events));
-    setCategories(fulfilled.flatMap((result) => result.value.categories));
-    const failedCount = results.length - fulfilled.length;
+    if (categoryResult.status === "fulfilled") {
+      setCategories(categoryResult.value);
+    } else {
+      setCategories([]);
+    }
+    if (settingsResult.status === "fulfilled") {
+      setCurrency(settingsResult.value.currency);
+    }
+    const loadedEvents = eventResults.flatMap((result, index) =>
+      result.status === "fulfilled"
+        ? result.value.map((event) => mapEventFromApi(event, calendars[index]))
+        : []
+    );
+    setEvents(loadedEvents);
+    const failedCount = eventResults.filter((result) => result.status === "rejected").length
+      + (categoryResult.status === "rejected" ? 1 : 0)
+      + (settingsResult.status === "rejected" ? 1 : 0);
     if (failedCount > 0) {
       setWorkspaceError(
-        failedCount === results.length
-          ? "Events and categories could not be loaded."
-          : `${failedCount} calendar${failedCount === 1 ? "" : "s"} could not be loaded.`
+        failedCount === eventResults.length + 2
+          ? "Workspace data could not be loaded."
+          : "Some workspace data could not be loaded."
       );
     }
     setWorkspaceLoading(false);
@@ -112,43 +111,81 @@ function MainApp({ calendars, onCreateCalendar, onDeleteCalendar, onLogout }) {
     loadWorkspaceData();
   }, [loadWorkspaceData]);
 
+  useEffect(() => {
+    const period = dayjs(selectedDate).format("YYYY-MM");
+    let active = true;
+    fetchBudgetLimits(period)
+      .then((limits) => {
+        if (active) setBudgetLimits(limits);
+      })
+      .catch((error) => {
+        if (active) setWorkspaceError(error.message || "Failed to load budget limits.");
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedDate]);
+
   const visibleEvents = useMemo(
     () => events.filter((event) => visibleCalendarIds.has(event.calendarId)),
     [events, visibleCalendarIds]
   );
-  const focusedCategories = useMemo(
-    () => categories.filter((category) => category.calendarId === focusedCalendarId),
-    [categories, focusedCalendarId]
+  const enabledCalendars = useMemo(
+    () => calendars.filter((calendar) => visibleCalendarIds.has(calendar.calendar_id)),
+    [calendars, visibleCalendarIds]
   );
-  const modalCategories = useMemo(() => {
-    const calendarId = editingEvent?.calendarId ?? focusedCalendarId;
-    return categories.filter((category) => category.calendarId === calendarId);
-  }, [categories, editingEvent, focusedCalendarId]);
+  const defaultEventCalendarId = useMemo(() => {
+    if (focusedCalendarId && visibleCalendarIds.has(focusedCalendarId)) {
+      return focusedCalendarId;
+    }
+    return enabledCalendars[0]?.calendar_id ?? null;
+  }, [enabledCalendars, focusedCalendarId, visibleCalendarIds]);
 
-  function updateFocusedCategories(update) {
-    setCategories((current) => {
-      const focused = current.filter(
-        (category) => category.calendarId === focusedCalendarId
+  useEffect(() => {
+    if (defaultEventCalendarId) {
+      setWorkspaceError((current) =>
+        current === ENABLE_CALENDAR_GUIDANCE ? "" : current
       );
-      const nextFocused = typeof update === "function" ? update(focused) : update;
-      return [
-        ...current.filter((category) => category.calendarId !== focusedCalendarId),
-        ...nextFocused.map((category) => ({
-          ...category,
-          calendarId: focusedCalendarId,
-        })),
-      ];
+    }
+  }, [defaultEventCalendarId]);
+
+  function updateSharedCategories(update) {
+    setCategories((current) => {
+      const next = typeof update === "function" ? update(current) : update;
+      const byId = new Map(next.map((category) => [String(category.category_id), category]));
+      setEvents((currentEvents) => currentEvents.map((event) => {
+        if (!event.categoryId) return event;
+        const category = byId.get(String(event.categoryId));
+        return category
+          ? { ...event, categoryName: category.name, categoryColor: category.color }
+          : { ...event, categoryId: "", categoryName: "Uncategorized", categoryColor: "" };
+      }));
+      return next;
     });
   }
 
-  async function handleSaveEvent({ title, budget, timeStart, timeEnd, categoryId, date }) {
+  async function handleSaveBudgetLimits(nextLimits) {
+    const saved = await saveBudgetLimits(nextLimits);
+    setBudgetLimits(saved);
+    return saved;
+  }
+
+  async function handleSaveEvent({
+    title,
+    budget,
+    timeStart,
+    timeEnd,
+    categoryId,
+    calendarId: submittedCalendarId,
+    date,
+  }) {
     if (!date) {
       alert("Error: No day selected");
       return;
     }
-    const calendarId = editingEvent?.calendarId ?? focusedCalendarId;
+    const calendarId = editingEvent?.calendarId ?? submittedCalendarId;
     if (!calendarId) {
-      setWorkspaceError("Create a calendar before adding an event.");
+      setWorkspaceError(ENABLE_CALENDAR_GUIDANCE);
       return;
     }
     const fallbackTitle = title.trim() === "" ? "New Event" : title;
@@ -198,8 +235,8 @@ function MainApp({ calendars, onCreateCalendar, onDeleteCalendar, onLogout }) {
   }
 
   function handleAddEventClick(event) {
-    if (!focusedCalendarId) {
-      setWorkspaceError("Create a calendar before adding an event.");
+    if (!defaultEventCalendarId) {
+      setWorkspaceError(ENABLE_CALENDAR_GUIDANCE);
       return;
     }
     const now = new Date();
@@ -231,25 +268,28 @@ function MainApp({ calendars, onCreateCalendar, onDeleteCalendar, onLogout }) {
             setFocusedCalendarId={setFocusedCalendarId}
             onCreateCalendar={onCreateCalendar}
             onDeleteCalendar={onDeleteCalendar}
-            categories={focusedCategories}
-            setCategories={updateFocusedCategories}
+            categories={categories}
+            setCategories={updateSharedCategories}
             onAddEventClick={handleAddEventClick}
             viewMode={viewMode}
             setViewMode={setViewMode}
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
-            events={visibleEvents}
+            events={events}
             budgetLimits={budgetLimits}
-            setBudgetLimits={setBudgetLimits}
+            onSaveBudgetLimits={handleSaveBudgetLimits}
+            currency={currency}
           />
         </div>
         <main className="relative flex-1 h-full overflow-hidden">
           {workspaceError && (
             <div role="alert" className="absolute right-3 top-3 z-30 flex items-center gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 shadow-sm">
               <span>{workspaceError}</span>
-              <button type="button" onClick={loadWorkspaceData} className="font-semibold underline">
-                Retry
-              </button>
+              {workspaceError !== ENABLE_CALENDAR_GUIDANCE && (
+                <button type="button" onClick={loadWorkspaceData} className="font-semibold underline">
+                  Retry
+                </button>
+              )}
             </div>
           )}
           {workspaceLoading && (
@@ -260,7 +300,12 @@ function MainApp({ calendars, onCreateCalendar, onDeleteCalendar, onLogout }) {
           <Calendar
             viewMode={viewMode}
             setViewMode={setViewMode}
-            categories={modalCategories}
+            calendars={enabledCalendars}
+            categories={categories}
+            currency={currency}
+            defaultEventCalendarId={defaultEventCalendarId}
+            canCreateEvent={Boolean(defaultEventCalendarId)}
+            onCreateBlocked={() => setWorkspaceError(ENABLE_CALENDAR_GUIDANCE)}
             events={visibleEvents}
             editingEvent={editingEvent}
             setEditingEvent={setEditingEvent}

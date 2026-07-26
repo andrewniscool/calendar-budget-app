@@ -2,22 +2,18 @@ import { api } from "./apiClient";
 import { USE_MOCK_API } from "../devConfig";
 
 let mockCategories = [
-  { category_id: "dev-category-work", name: "Work", color: "#81B2D9", calendarId: "dev-calendar" },
-  { category_id: "dev-category-food", name: "Food", color: "#FFB88A", calendarId: "dev-calendar" },
-  { category_id: "dev-category-study", name: "Study", color: "#BBA6DD", calendarId: "dev-calendar" },
+  { category_id: "dev-category-work", name: "Work", color: "#81B2D9" },
+  { category_id: "dev-category-food", name: "Food", color: "#FFB88A" },
+  { category_id: "dev-category-study", name: "Study", color: "#BBA6DD" },
 ];
 
-export const fetchCategories = async (calendarId) => {
-  if (!calendarId) {
-    throw new Error("calendarId is required to fetch categories");
-  }
-
+export const fetchCategories = async () => {
   if (USE_MOCK_API) {
-    return mockCategories.filter((category) => category.calendarId === calendarId);
+    return mockCategories;
   }
   
   try {
-    const response = await api.get(`/categories?calendarId=${calendarId}`);
+    const response = await api.get("/categories");
     return response.data;
   } catch (error) {
     console.error("Error fetching categories:", error);
@@ -26,9 +22,6 @@ export const fetchCategories = async (calendarId) => {
 };
 
 export const createCategory = async (categoryData) => {
-  if (!categoryData.calendarId) {
-    throw new Error("calendarId is required when creating a category");
-  }
   if (!categoryData.name) {
     throw new Error("name is required when creating a category");
   }
@@ -38,7 +31,6 @@ export const createCategory = async (categoryData) => {
       category_id: `dev-category-${Date.now()}`,
       name: categoryData.name,
       color: categoryData.color,
-      calendarId: categoryData.calendarId,
     };
     mockCategories = [...mockCategories, category];
     return category;
@@ -57,9 +49,6 @@ export const updateCategory = async (id, categoryData) => {
   if (!id) {
     throw new Error("Category ID is required to update a category");
   }
-  if (!categoryData.calendarId) {
-    throw new Error("calendarId is required when updating a category");
-  }
   if (!categoryData.name) {
     throw new Error("name is required when updating a category");
   }
@@ -69,7 +58,6 @@ export const updateCategory = async (id, categoryData) => {
       category_id: id,
       name: categoryData.name,
       color: categoryData.color,
-      calendarId: categoryData.calendarId,
     };
     mockCategories = mockCategories.map((category) =>
       category.category_id === id ? updatedCategory : category
@@ -83,30 +71,6 @@ export const updateCategory = async (id, categoryData) => {
   } catch (error) {
     console.error("Error updating category:", error);
     throw new Error(error.response?.data?.error || "Failed to update category");
-  }
-};
-
-export const deleteAllCategories = async (calendarId) => {
-  if (!calendarId) {
-    throw new Error("calendarId is required to delete all categories");
-  }
-
-  if (USE_MOCK_API) {
-    const deleted = mockCategories
-      .filter((category) => category.calendarId === calendarId)
-      .map((category) => ({
-      category_id: category.category_id,
-      }));
-    mockCategories = mockCategories.filter((category) => category.calendarId !== calendarId);
-    return deleted;
-  }
-  
-  try {
-    const response = await api.delete(`/categories/all?calendarId=${calendarId}`);
-    return response.data;
-  } catch (error) {
-    console.error("Error deleting all categories:", error);
-    throw new Error(error.response?.data?.error || "Failed to delete all categories");
   }
 };
 

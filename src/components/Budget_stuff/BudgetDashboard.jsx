@@ -3,6 +3,7 @@ import dayjs from 'dayjs';
 import BudgetSummary from './BudgetSummary';
 import BudgetSettings from './BudgetSettings';
 import { FiSettings, FiChevronDown, FiAlertCircle, FiAlertTriangle } from 'react-icons/fi';
+import { formatCurrency } from '../../utils/currency';
 
 const BAR_COLORS = {
   exceeded: 'bg-red-500',
@@ -17,7 +18,8 @@ const BudgetDashboard = ({
   selectedDate,
   viewMode,
   budgetLimits,
-  setBudgetLimits
+  onSaveBudgetLimits,
+  currency,
 }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -34,13 +36,13 @@ const BudgetDashboard = ({
 
     monthEvents.forEach(event => {
       const budget = parseFloat(event.budget) || 0;
-      const category = event.categoryName || 'Uncategorized';
+      const categoryId = event.categoryId ? String(event.categoryId) : "uncategorized";
 
-      if (!categorySpending[category]) {
-        categorySpending[category] = 0;
+      if (!categorySpending[categoryId]) {
+        categorySpending[categoryId] = 0;
       }
 
-      categorySpending[category] += budget;
+      categorySpending[categoryId] += budget;
       totalSpending += budget;
     });
 
@@ -59,11 +61,19 @@ const BudgetDashboard = ({
 
   const overallStatus = getBudgetStatus(monthlySpending.totalSpending, budgetLimits?.overall);
 
-  const categoryAlerts = Object.entries(budgetLimits || {})
-    .filter(([category]) => category !== 'overall')
-    .map(([category, limit]) => {
-      const spent = monthlySpending.categorySpending[category] || 0;
-      return { category, limit, spent, ...getBudgetStatus(spent, limit) };
+  const categoryAlerts = (budgetLimits?.categories || [])
+    .map(({ categoryId, amount: limit }) => {
+      const category = categories.find(
+        (item) => String(item.category_id) === String(categoryId)
+      );
+      const spent = monthlySpending.categorySpending[String(categoryId)] || 0;
+      return {
+        categoryId,
+        category: category?.name || "Deleted category",
+        limit,
+        spent,
+        ...getBudgetStatus(spent, limit),
+      };
     })
     .filter((alert) => alert.status === 'warning' || alert.status === 'exceeded');
 
@@ -93,7 +103,7 @@ const BudgetDashboard = ({
 
       {collapsed ? (
         <div className="mt-1 px-1 text-[11px] tabular-nums text-slate-400">
-          ${monthlySpending.totalSpending.toFixed(2)} spent
+          {formatCurrency(monthlySpending.totalSpending, currency)} spent
           {budgetLimits?.overall > 0 && ` · ${overallStatus.percentage.toFixed(0)}%`}
           {categoryAlerts.length > 0 &&
             ` · ${categoryAlerts.length} alert${categoryAlerts.length > 1 ? 's' : ''}`}
@@ -105,10 +115,10 @@ const BudgetDashboard = ({
             <div className="px-1">
               <div className="flex items-baseline justify-between">
                 <span className="text-lg font-semibold tabular-nums text-slate-900">
-                  ${monthlySpending.totalSpending.toFixed(2)}
+                  {formatCurrency(monthlySpending.totalSpending, currency)}
                 </span>
                 <span className="text-[11px] tabular-nums text-slate-400">
-                  of ${budgetLimits.overall.toFixed(2)}
+                  of {formatCurrency(budgetLimits.overall, currency)}
                 </span>
               </div>
               <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200/70">
@@ -131,7 +141,7 @@ const BudgetDashboard = ({
                   }`}
                 >
                   {overallStatus.status === 'exceeded'
-                    ? `Over by $${(monthlySpending.totalSpending - budgetLimits.overall).toFixed(2)}`
+                    ? `Over by ${formatCurrency(monthlySpending.totalSpending - budgetLimits.overall, currency)}`
                     : `${overallStatus.percentage.toFixed(0)}% used`}
                 </span>
               </div>
@@ -145,7 +155,7 @@ const BudgetDashboard = ({
                 const exceeded = alert.status === 'exceeded';
                 return (
                   <div
-                    key={alert.category}
+                    key={alert.categoryId}
                     className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 ${
                       exceeded ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
                     }`}
@@ -159,7 +169,7 @@ const BudgetDashboard = ({
                       <span className="truncate">{alert.category}</span>
                     </span>
                     <span className="shrink-0 text-[11px] tabular-nums">
-                      ${alert.spent.toFixed(0)} / ${alert.limit.toFixed(0)}
+                      {formatCurrency(alert.spent, currency, { maximumFractionDigits: 0 })} / {formatCurrency(alert.limit, currency, { maximumFractionDigits: 0 })}
                     </span>
                   </div>
                 );
@@ -173,6 +183,7 @@ const BudgetDashboard = ({
             categories={categories}
             selectedDate={selectedDate}
             viewMode={viewMode}
+            currency={currency}
           />
         </div>
       )}
@@ -181,7 +192,8 @@ const BudgetDashboard = ({
       <BudgetSettings
         categories={categories}
         budgetLimits={budgetLimits}
-        setBudgetLimits={setBudgetLimits}
+        onSaveBudgetLimits={onSaveBudgetLimits}
+        currency={currency}
         isOpen={showSettings}
         setIsOpen={setShowSettings}
       />

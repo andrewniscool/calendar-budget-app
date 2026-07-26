@@ -56,16 +56,13 @@ export const schemas = {
     name: nonEmptyText('Calendar name', 100),
     color: color.default(defaultCalendarColor),
   }),
-  categoryQuery: strictObject({ calendarId: positiveId }),
   categoryCreate: strictObject({
     name: nonEmptyText('Category name', 100),
     color,
-    calendarId: positiveId,
   }),
   categoryUpdate: strictObject({
     name: nonEmptyText('Category name', 100),
     color,
-    calendarId: positiveId,
   }),
   eventQuery: strictObject({
     calendarId: positiveId,
@@ -104,11 +101,9 @@ export const schemas = {
   }),
   idParams: strictObject({ id: positiveId }),
   budgetLimitQuery: strictObject({
-    calendarId: positiveId,
     period: month,
   }),
   budgetLimitUpsert: strictObject({
-    calendarId: positiveId,
     period: month,
     overall: amount.nullish(),
     categories: z.array(strictObject({
@@ -121,6 +116,8 @@ export const schemas = {
   }),
   calendarSettings: strictObject({
     timezone,
+  }),
+  financialSettings: strictObject({
     currency,
   }),
   recurringQuery: strictObject({ calendarId: positiveId }),

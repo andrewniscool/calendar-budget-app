@@ -9,6 +9,7 @@ import { createEventRepository } from './repositories/eventRepository.js';
 import { createBudgetLimitRepository } from './repositories/budgetLimitRepository.js';
 import { createCalendarSettingsRepository } from './repositories/calendarSettingsRepository.js';
 import { createRecurringEventRepository } from './repositories/recurringEventRepository.js';
+import { createFinancialSettingsRepository } from './repositories/financialSettingsRepository.js';
 import { createAuthService } from './services/authService.js';
 import { createCalendarService } from './services/calendarService.js';
 import { createCategoryService } from './services/categoryService.js';
@@ -16,6 +17,7 @@ import { createEventService } from './services/eventService.js';
 import { createBudgetLimitService } from './services/budgetLimitService.js';
 import { createCalendarSettingsService } from './services/calendarSettingsService.js';
 import { createRecurringEventService } from './services/recurringEventService.js';
+import { createFinancialSettingsService } from './services/financialSettingsService.js';
 import { createUserController } from './controllers/userController.js';
 import { createCalendarController } from './controllers/calendarController.js';
 import { createCategoryController } from './controllers/categoryController.js';
@@ -23,6 +25,7 @@ import { createEventController } from './controllers/eventController.js';
 import { createBudgetLimitController } from './controllers/budgetLimitController.js';
 import { createCalendarSettingsController } from './controllers/calendarSettingsController.js';
 import { createRecurringEventController } from './controllers/recurringEventController.js';
+import { createFinancialSettingsController } from './controllers/financialSettingsController.js';
 import { createAuthenticate } from './middleware/authMiddleware.js';
 import { createCsrfProtection } from './middleware/authMiddleware.js';
 import { requestContext } from './middleware/requestContext.js';
@@ -55,6 +58,9 @@ export function createApp({ db, config, logger = createLogger() }) {
   );
   const calendarSettingsController = createCalendarSettingsController(
     createCalendarSettingsService(createCalendarSettingsRepository(db))
+  );
+  const financialSettingsController = createFinancialSettingsController(
+    createFinancialSettingsService(createFinancialSettingsRepository(db))
   );
   const recurringEventController = createRecurringEventController(
     createRecurringEventService(createRecurringEventRepository(db))
@@ -119,6 +125,7 @@ export function createApp({ db, config, logger = createLogger() }) {
     userController,
     calendarController,
     calendarSettingsController,
+    financialSettingsController,
     categoryController,
     eventController,
     budgetLimitController,

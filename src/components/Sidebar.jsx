@@ -190,7 +190,8 @@ function Sidebar({
   setViewMode,
   events,
   budgetLimits,
-  setBudgetLimits
+  onSaveBudgetLimits,
+  currency,
 }) {
   return (
     <aside
@@ -239,7 +240,8 @@ function Sidebar({
           selectedDate={selectedDate}
           viewMode={viewMode}
           budgetLimits={budgetLimits}
-          setBudgetLimits={setBudgetLimits}
+          onSaveBudgetLimits={onSaveBudgetLimits}
+          currency={currency}
         />
       </div>
 
@@ -247,7 +249,6 @@ function Sidebar({
         <CategoryManager
           categories={categories}
           setCategories={setCategories}
-          calendarId={focusedCalendarId}
         />
       </div>
     </aside>

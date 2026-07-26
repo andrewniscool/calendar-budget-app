@@ -1,8 +1,9 @@
 import { formatTimeRange } from "./timeGrid";
+import { formatCurrency } from "../../utils/currency";
 
-// A single tinted event card inside the Week/Day time grid. Position comes
-// from the layoutDayEvents() item; colors are derived from the category color.
-function EventBlock({ item, color, rowHeight, onClick }) {
+// A single calendar-tinted event card inside the Week/Day time grid. Position
+// comes from the layoutDayEvents() item; financial data stays secondary.
+function EventBlock({ item, color, categoryName, currency, rowHeight, onClick }) {
   const { event, start, end, col, cols, stack = 0 } = item;
   const height = ((end - start) / 60) * rowHeight;
   const compact = height < 40;
@@ -39,12 +40,17 @@ function EventBlock({ item, color, rowHeight, onClick }) {
         <div className="truncate font-medium">
           {event.title}
           {event.budget > 0 && (
-            <span className="font-normal tabular-nums opacity-70"> · ${event.budget}</span>
+            <span className="font-normal tabular-nums opacity-70">
+              {" · "}{formatCurrency(event.budget, currency)}
+            </span>
           )}
         </div>
         {!compact && (
           <div className="truncate text-[11px] tabular-nums opacity-70">
             {formatTimeRange(start, end)}
+            {event.categoryId && categoryName && (
+              <span> · {categoryName}</span>
+            )}
           </div>
         )}
       </div>

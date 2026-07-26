@@ -18,8 +18,10 @@ calendar view may filter the grid.
 
 Budget categories classify optional event spending: Food, Transportation,
 Entertainment, Bills, Shopping, Other, or no expense. Calendars and categories
-are separate concepts. Every event belongs to a calendar; it may have no
-financial classification or amount.
+are separate concepts. Categories are user-level records shared across every
+owned calendar, so one Food category can classify Personal, Work, and School
+events. Every event belongs to a calendar; it may have no financial
+classification or amount.
 
 Calendar color is the event's primary visual identity. Category and cost are
 secondary metadata. For example, a green Personal event titled Dinner may show
@@ -50,8 +52,8 @@ management, degree, tuition, SIS, or AI systems without an explicit task.
   six-digit hex color and uses `#2563EB` as its compatibility default.
 - Whether the current `budget` field means expected cost, actual cost, or a
   transitional generic amount.
-- Currency/timezone presentation rules and when existing backend calendar
-  settings become visible in the UI.
+- When calendar timezone settings become visible in the UI. Financial amounts
+  use one user-level ISO currency setting.
 - How totals treat cancelled, unpaid, and recurring events once those states
   exist.
 
@@ -69,6 +71,6 @@ management, degree, tuition, SIS, or AI systems without an explicit task.
    filter, one month selector, and global overall/category limits. Do not add
    per-calendar budget limits or comparison dashboards initially.
 
-Before Phase 4, decide whether budget categories become user-level shared
-records or remain per-calendar records merged for reporting. Favor a coherent
-shared category model over merging categories by display name.
+Budget categories and monthly overall/category limits are user-level shared
+records. Existing per-calendar category records are merged by normalized name
+during migration.

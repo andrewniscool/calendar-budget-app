@@ -74,10 +74,10 @@ CSRF uses a signed, readable cookie plus a matching `X-CSRF-Token` header. CORS 
 | POST | `/auth/reset-password` | Consume a reset token and revoke all sessions |
 | GET/POST | `/calendars` | List/create calendars |
 | DELETE | `/calendars/:id` | Delete an owned calendar |
-| GET/PUT | `/calendars/:id/settings` | Read/update timezone and currency |
-| GET/POST | `/categories` | List/create calendar categories |
+| GET/PUT | `/calendars/:id/settings` | Read/update calendar timezone |
+| GET/PUT | `/financial-settings` | Read/update user financial currency |
+| GET/POST | `/categories` | List/create shared financial categories |
 | PUT/DELETE | `/categories/:id` | Update/delete an owned category |
-| DELETE | `/categories/all` | Delete all categories in an owned calendar |
 | GET/POST | `/events` | List/create events |
 | PUT/DELETE | `/events/:id` | Update/delete an owned event |
 | GET/PUT | `/budget-limits` | Read or atomically update monthly limits |
@@ -119,17 +119,18 @@ limit), and `500`. `GET /health/live` and `GET /health/ready` are public.
 | --- | --- | --- |
 | Auth | Register: `username`, `email`, `password`; login: `email`, `password`; verification/reset: `token` (and reset `password`) | Register, resend, and forgot-password return `202` to avoid account enumeration. Login/refresh return `{ user }` and set cookies. A user must verify email before logging in. |
 | Calendars | Create `{ name, color? }` | `color` is `#RRGGBB` and defaults to `#2563EB`. `GET /calendars` returns rows with `calendar_id`, `name`, `color`, and `created_at`. Create/delete return the affected row. Maximum 50 calendars per user. |
-| Settings | `{ timezone, currency }` | `GET` returns `{ calendar_id, timezone, currency }`; defaults are `America/New_York` and `USD` until stored. Timezone must be IANA and currency a three-letter code. |
-| Categories | `{ calendarId, name, color }` | `color` is `#RRGGBB`. List/create/update return `{ category_id, name, color }`. Deleting all returns `{ message, deletedCount }`. Maximum 500 per calendar. |
+| Calendar settings | `{ timezone }` | `GET` returns `{ calendar_id, timezone }`; timezone defaults to `America/New_York` and must be IANA. |
+| Financial settings | `{ currency }` | `GET`/`PUT` return `{ currency }`; currency defaults to `USD` and must be a three-letter ISO code. |
+| Categories | `{ name, color }` | Categories are shared across the user's calendars. `color` remains secondary `#RRGGBB` metadata. List/create/update return `{ category_id, name, color }`. Maximum 500 per user. |
 | Events | `{ calendarId, title, date, timeStart, timeEnd, categoryId?, budget? }` | List takes `calendarId` plus optional `startDate`/`endDate` (both required together for a bounded range, maximum 366 days). Returned event rows use database-style keys such as `time_start`, `category_name`, and `category_color`. Updating an event changes its fields but does not move it to a different calendar. |
-| Budget limits | Query/body `{ calendarId, period: "YYYY-MM" }`; write also has `overall?` and `categories: [{ categoryId, amount }]` | `GET`/`PUT` return `{ calendarId, period, overall, categories }`. A write is transactional and upserts only supplied limits; omitting a limit does not delete an existing one. |
+| Budget limits | Query/body `{ period: "YYYY-MM" }`; write also has `overall?` and `categories: [{ categoryId, amount }]` | Limits are global to the user. `GET`/`PUT` return `{ period, overall, categories }`. A write is transactional and upserts only supplied limits; omitting a limit does not delete an existing one. |
 | Recurring events | `{ calendarId, categoryId?, title, startDate, endDate?, timeStart, timeEnd, budget?, frequency, interval? }` | `frequency` is `daily`, `weekly`, or `monthly`; `interval` defaults to 1. These are recurrence definitions, not materialized rows in `events`. Maximum 500 definitions per calendar. |
 
-Deleting a calendar cascades to its settings, categories, events, budget limits,
-and recurring definitions. Deleting a category sets the category reference to
-`NULL` on events and recurring definitions, and cascades to that category's
-budget limits. A category supplied for an event, recurring definition, or
-budget limit must belong to the same calendar.
+Deleting a calendar cascades to its settings, events, and recurring
+definitions, but shared categories and global limits survive. Deleting a
+category sets its reference to `NULL` on events and recurring definitions
+across the user's calendars and deletes that category's limit. A supplied
+category must belong to the authenticated user.
 
 ### Authentication lifecycle
 
@@ -153,8 +154,9 @@ path `/auth`), and `cb_csrf` (readable). They use `SameSite=Lax`; set
 
 ## Data model
 
-`users` own `calendars`. A calendar owns `categories`, `events`, optional
-`calendar_settings`, `budget_limits`, and `recurring_events`. `refresh_tokens`
+`users` own calendars, shared categories, global budget limits, and financial
+settings. A calendar owns events, optional timezone settings, and recurring
+events. Composite owner foreign keys preserve tenant consistency. `refresh_tokens`
 track session families. `account_tokens` hold hashed email-verification and
 password-reset tokens, while `mail_outbox` makes email delivery reliable across
 API crashes. The baseline migration also supplies foreign keys, checks,
