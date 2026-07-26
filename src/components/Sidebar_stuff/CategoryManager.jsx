@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  fetchCategories,
   createCategory,
   updateCategory,
   deleteCategory,
@@ -128,17 +127,6 @@ function CategoryManager({ categories, setCategories, calendarId }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [modalAnchorRect, setModalAnchorRect] = useState(null);
-
-  useEffect(() => {
-    if (calendarId) {
-      fetchCategories(calendarId)
-        .then((data) => {
-          const mapped = data.map((cat) => ({ ...cat, visible: true }));
-          setCategories(mapped);
-        })
-        .catch((err) => console.error("Error fetching categories:", err));
-    }
-  }, [calendarId, setCategories]);
 
   const toggleVisibility = (index) => {
     const updated = [...categories];

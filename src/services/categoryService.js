@@ -2,9 +2,9 @@ import { api } from "./apiClient";
 import { USE_MOCK_API } from "../devConfig";
 
 let mockCategories = [
-  { category_id: "dev-category-work", name: "Work", color: "#81B2D9" },
-  { category_id: "dev-category-food", name: "Food", color: "#FFB88A" },
-  { category_id: "dev-category-study", name: "Study", color: "#BBA6DD" },
+  { category_id: "dev-category-work", name: "Work", color: "#81B2D9", calendarId: "dev-calendar" },
+  { category_id: "dev-category-food", name: "Food", color: "#FFB88A", calendarId: "dev-calendar" },
+  { category_id: "dev-category-study", name: "Study", color: "#BBA6DD", calendarId: "dev-calendar" },
 ];
 
 export const fetchCategories = async (calendarId) => {
@@ -13,7 +13,7 @@ export const fetchCategories = async (calendarId) => {
   }
 
   if (USE_MOCK_API) {
-    return mockCategories;
+    return mockCategories.filter((category) => category.calendarId === calendarId);
   }
   
   try {
@@ -38,6 +38,7 @@ export const createCategory = async (categoryData) => {
       category_id: `dev-category-${Date.now()}`,
       name: categoryData.name,
       color: categoryData.color,
+      calendarId: categoryData.calendarId,
     };
     mockCategories = [...mockCategories, category];
     return category;
@@ -68,6 +69,7 @@ export const updateCategory = async (id, categoryData) => {
       category_id: id,
       name: categoryData.name,
       color: categoryData.color,
+      calendarId: categoryData.calendarId,
     };
     mockCategories = mockCategories.map((category) =>
       category.category_id === id ? updatedCategory : category
@@ -90,10 +92,12 @@ export const deleteAllCategories = async (calendarId) => {
   }
 
   if (USE_MOCK_API) {
-    const deleted = mockCategories.map((category) => ({
+    const deleted = mockCategories
+      .filter((category) => category.calendarId === calendarId)
+      .map((category) => ({
       category_id: category.category_id,
-    }));
-    mockCategories = [];
+      }));
+    mockCategories = mockCategories.filter((category) => category.calendarId !== calendarId);
     return deleted;
   }
   
