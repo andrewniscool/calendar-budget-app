@@ -587,6 +587,27 @@ const EventModal = forwardRef(function EventModal({
     }
   }, [isOpen, setPendingEvent]);
 
+  // A new event's calendar card mirrors the form while the user edits it.
+  // Because the preview is laid out with saved events, changes to its time or
+  // date also update its collision position immediately.
+  useEffect(() => {
+    if (!isOpen || editingEvent || !timeStart || !timeEnd) return;
+
+    setPendingEvent?.((current) =>
+      current
+        ? {
+            ...current,
+            title: title.trim() || "New Event",
+            budget,
+            timeStart,
+            timeEnd,
+            categoryId,
+            date,
+          }
+        : current
+    );
+  }, [isOpen, editingEvent, title, budget, timeStart, timeEnd, categoryId, date, setPendingEvent]);
+
   // Reset the visual mode before closing so the next open never animates from
   // the previous form/details state.
   function closeModal() {
@@ -594,10 +615,10 @@ const EventModal = forwardRef(function EventModal({
     setIsOpen(false);
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     if (startTimeError || endTimeError) return;
-    onSave({ title, date, budget, timeStart, timeEnd, categoryId });
+    await onSave({ title, date, budget, timeStart, timeEnd, categoryId });
     closeModal();
   }
 

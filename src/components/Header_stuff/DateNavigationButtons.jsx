@@ -1,6 +1,22 @@
 import React from "react";
 import dayjs from "dayjs";
 
+function ordinalDay(day) {
+  const remainder100 = day % 100;
+  if (remainder100 >= 11 && remainder100 <= 13) return `${day}th`;
+
+  switch (day % 10) {
+    case 1:
+      return `${day}st`;
+    case 2:
+      return `${day}nd`;
+    case 3:
+      return `${day}rd`;
+    default:
+      return `${day}th`;
+  }
+}
+
 function DateNavigationButtons({ viewMode, selectedDate, setSelectedDate }) {
   const handlePrevious = () => {
     const current = dayjs(selectedDate);
@@ -59,11 +75,18 @@ function DateNavigationButtons({ viewMode, selectedDate, setSelectedDate }) {
       case "week": {
         const startOfWeek = current.startOf("week");
         const endOfWeek = current.endOf("week");
-        if (startOfWeek.month() === endOfWeek.month()) {
-          return `${startOfWeek.format("MMMM")} ${endOfWeek.format("YYYY")}`;
-        } else {
-          return `${startOfWeek.format("MMM")} – ${endOfWeek.format("MMM YYYY")}`;
+        const startDay = ordinalDay(startOfWeek.date());
+        const endDay = ordinalDay(endOfWeek.date());
+
+        if (startOfWeek.year() !== endOfWeek.year()) {
+          return `${startOfWeek.format("MMM")} ${startDay}, ${startOfWeek.year()} – ${endOfWeek.format("MMM")} ${endDay}, ${endOfWeek.year()}`;
         }
+
+        if (startOfWeek.month() !== endOfWeek.month()) {
+          return `${startOfWeek.format("MMM")} ${startDay} – ${endOfWeek.format("MMM")} ${endDay}, ${endOfWeek.year()}`;
+        }
+
+        return `${startOfWeek.format("MMM")} ${startDay} – ${endDay}, ${endOfWeek.year()}`;
       }
       case "month":
         return current.format("MMMM YYYY");

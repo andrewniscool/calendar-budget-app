@@ -21,8 +21,9 @@ export function getBlockOffsets(timeStart, timeEnd, rowHeight) {
   };
 }
 
-// Assign overlapping events to side-by-side columns so they never stack on
-// top of each other. Returns [{ event, start, end, col, cols }].
+// Assign overlapping events to columns. The columns are rendered as a
+// slightly offset stack (rather than equal-width lanes), similar to Google
+// Calendar. Returns [{ event, start, end, col, cols, stack }].
 export function layoutDayEvents(dayEvents) {
   const items = dayEvents
     .map((event) => ({ event, ...clampRange(event.timeStart, event.timeEnd), col: 0, cols: 1 }))
@@ -33,7 +34,7 @@ export function layoutDayEvents(dayEvents) {
 
   const closeCluster = () => {
     const colEnds = [];
-    for (const item of cluster) {
+    cluster.forEach((item, stack) => {
       let col = colEnds.findIndex((end) => end <= item.start);
       if (col === -1) {
         col = colEnds.length;
@@ -42,7 +43,8 @@ export function layoutDayEvents(dayEvents) {
         colEnds[col] = item.end;
       }
       item.col = col;
-    }
+      item.stack = stack;
+    });
     for (const item of cluster) item.cols = colEnds.length;
     cluster = [];
   };

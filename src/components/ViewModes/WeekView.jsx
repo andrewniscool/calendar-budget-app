@@ -2,7 +2,7 @@ import { Fragment, useEffect, useState, useRef, useLayoutEffect, useCallback } f
 import dayjs from "dayjs";
 import EventModal from "../EventModal";
 import EventBlock from "./EventBlock";
-import { getBlockOffsets, layoutDayEvents } from "./timeGrid";
+import { layoutDayEvents } from "./timeGrid";
 
 const GUTTER = "64px";
 
@@ -306,12 +306,17 @@ function WeekView({
           style={{ left: GUTTER, height: `${24 * rowHeight}px` }}
         >
           {weekDates.map((day, dayIndex) => {
-            const dayItems = layoutDayEvents(
-              events.filter(
+            const savedDayEvents = events.filter(
                 (event) =>
                   dayjs(event.date).isSame(day, "day") &&
                   getCategoryForEvent(event)?.visible !== false
-              )
+              );
+            const previewEvent =
+              pendingEvent && dayjs(pendingEvent.date).isSame(day, "day")
+                ? { ...pendingEvent, id: "preview", isPending: true }
+                : null;
+            const dayItems = layoutDayEvents(
+              previewEvent ? [...savedDayEvents, previewEvent] : savedDayEvents
             );
 
             return (
@@ -328,22 +333,13 @@ function WeekView({
                       color={color}
                       rowHeight={rowHeight}
                       onClick={(e) => {
+                        if (item.event.isPending) return;
                         e.stopPropagation();
                         handleEventClick(item.event, e);
                       }}
                     />
                   );
                 })}
-
-                {pendingEvent && dayjs(pendingEvent.date).isSame(day, "day") && (
-                  <div
-                    data-event-id="preview"
-                    className="pointer-events-auto absolute left-[2px] right-[6px] z-20 rounded-md border border-dashed border-slate-400 bg-white/90 px-2 py-1 text-xs font-medium text-slate-500 shadow-sm"
-                    style={getBlockOffsets(pendingEvent.timeStart, pendingEvent.timeEnd, rowHeight)}
-                  >
-                    New event
-                  </div>
-                )}
               </div>
             );
           })}

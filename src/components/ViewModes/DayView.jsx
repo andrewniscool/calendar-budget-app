@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import dayjs from "dayjs";
 import EventModal from "../EventModal";
 import EventBlock from "./EventBlock";
-import { getBlockOffsets, layoutDayEvents } from "./timeGrid";
+import { layoutDayEvents } from "./timeGrid";
 
 const GUTTER = "64px";
 
@@ -83,12 +83,17 @@ function DayView({
     }, 0);
   }
 
-  const dayItems = layoutDayEvents(
-    events.filter(
+  const savedDayEvents = events.filter(
       (event) =>
         dayjs(event.date).isSame(dayjs(today), "day") &&
         getCategoryForEvent(event)?.visible !== false
-    )
+    );
+  const previewEvent =
+    pendingEvent && dayjs(pendingEvent.date).isSame(dayjs(today), "day")
+      ? { ...pendingEvent, id: "preview", isPending: true }
+      : null;
+  const dayItems = layoutDayEvents(
+    previewEvent ? [...savedDayEvents, previewEvent] : savedDayEvents
   );
 
   return (
@@ -163,6 +168,7 @@ function DayView({
                 color={color}
                 rowHeight={rowHeight}
                 onClick={(e) => {
+                  if (item.event.isPending) return;
                   e.stopPropagation();
                   setEditingEvent(item.event);
                   setModalAnchorRect(e.currentTarget.getBoundingClientRect());
@@ -171,17 +177,6 @@ function DayView({
               />
             );
           })}
-
-          {/* Preview pending event */}
-          {pendingEvent && dayjs(pendingEvent.date).isSame(dayjs(today), "day") && (
-            <div
-              data-event-id="preview"
-              className="pointer-events-auto absolute left-[2px] right-[6px] z-20 rounded-md border border-dashed border-slate-400 bg-white/90 px-2 py-1 text-xs font-medium text-slate-500 shadow-sm"
-              style={getBlockOffsets(pendingEvent.timeStart, pendingEvent.timeEnd, rowHeight)}
-            >
-              New event
-            </div>
-          )}
         </div>
 
         {/* Current time indicator */}
