@@ -1,12 +1,11 @@
 import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef, useLayoutEffect } from "react";
-// eslint-disable-next-line no-unused-vars
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { FiCalendar, FiClock, FiDollarSign, FiEdit2, FiTag, FiTrash2, FiX } from "react-icons/fi";
 import dayjs from "dayjs";
 import { formatCurrency } from "../utils/currency";
 
 const NO_CATEGORY_COLOR = "#cbd5e1";
-const LAST_START = 23 * 60 + 30; // latest pickable start, leaves room for an end option
+const LAST_START = 23 * 60 + 30;
 const LAST_END = 23 * 60 + 45;
 const MODAL_PADDING = 12;
 const MODAL_GAP = 8;
@@ -550,6 +549,8 @@ const EventModal = forwardRef(function EventModal({
   const [date, setDate] = useState(editingEvent?.date || new Date().toISOString().split("T")[0]);
   const [renderPos, setRenderPos] = useState(null);
   const [isEditingForm, setIsEditingForm] = useState(false);
+  const [isDraftInitialized, setIsDraftInitialized] = useState(false);
+  const openSessionRef = useRef(false);
   // Details is the synchronous default for existing events. The explicit
   // flag only becomes true after the user presses Edit, avoiding a stale form
   // frame when reopening an event.
@@ -604,41 +605,48 @@ const EventModal = forwardRef(function EventModal({
   }, [isOpen, modalMode, anchorRect, clickCoords, modalPosition]);
 
   useEffect(() => {
-    if (isOpen) {
-      setStartTimeError("");
-      setEndTimeError("");
-      if (editingEvent) {
-        setDate(new Date(editingEvent.date).toISOString().split("T")[0]);
-        setTitle(editingEvent.title || "");
-        setBudget(editingEvent.budget || "");
-        setTimeStart(editingEvent.timeStart || "");
-        setTimeEnd(editingEvent.timeEnd || "");
-        setCalendarId(editingEvent.calendarId);
-        setCategoryId(String(editingEvent.categoryId || ""));
-      } else {
-        const defaultDate = selectedDate || new Date().toISOString().split("T")[0];
-        const now = new Date();
-        const nowQuarter = Math.min(
-          Math.ceil((now.getHours() * 60 + now.getMinutes()) / 15) * 15,
-          LAST_START
-        );
-        const hasHour = selectedHour !== undefined && selectedHour !== null;
-        const start = hasHour
-          ? selectedHour.toString().padStart(2, "0") + ":00"
-          : toHHMM(nowQuarter);
-        const end = hasHour
-          ? ((selectedHour + 1) % 24).toString().padStart(2, "0") + ":00"
-          : toHHMM(Math.min(nowQuarter + 60, LAST_END));
-
-        setDate(defaultDate);
-        setTitle("");
-        setBudget("");
-        setTimeStart(start);
-        setTimeEnd(end);
-        setCalendarId(defaultCalendarId || "");
-        setCategoryId("");
-      }
+    if (!isOpen) {
+      openSessionRef.current = false;
+      setIsDraftInitialized(false);
+      return;
     }
+    if (openSessionRef.current) return;
+
+    openSessionRef.current = true;
+    setStartTimeError("");
+    setEndTimeError("");
+    if (editingEvent) {
+      setDate(new Date(editingEvent.date).toISOString().split("T")[0]);
+      setTitle(editingEvent.title || "");
+      setBudget(editingEvent.budget || "");
+      setTimeStart(editingEvent.timeStart || "");
+      setTimeEnd(editingEvent.timeEnd || "");
+      setCalendarId(editingEvent.calendarId);
+      setCategoryId(String(editingEvent.categoryId || ""));
+    } else {
+      const defaultDate = selectedDate || new Date().toISOString().split("T")[0];
+      const now = new Date();
+      const nowQuarter = Math.min(
+        Math.ceil((now.getHours() * 60 + now.getMinutes()) / 15) * 15,
+        LAST_START
+      );
+      const hasHour = selectedHour !== undefined && selectedHour !== null;
+      const start = hasHour
+        ? selectedHour.toString().padStart(2, "0") + ":00"
+        : toHHMM(nowQuarter);
+      const end = hasHour
+        ? ((selectedHour + 1) % 24).toString().padStart(2, "0") + ":00"
+        : toHHMM(Math.min(nowQuarter + 60, LAST_END));
+
+      setDate(defaultDate);
+      setTitle("");
+      setBudget("");
+      setTimeStart(start);
+      setTimeEnd(end);
+      setCalendarId(defaultCalendarId || "");
+      setCategoryId("");
+    }
+    setIsDraftInitialized(true);
   }, [defaultCalendarId, isOpen, editingEvent, selectedHour, selectedDate]);
 
   const activeCalendarId = editingEvent?.calendarId ?? calendarId;
@@ -656,7 +664,7 @@ const EventModal = forwardRef(function EventModal({
   // Because the preview is laid out with saved events, changes to its time or
   // date also update its collision position immediately.
   useEffect(() => {
-    if (!isOpen || editingEvent || !timeStart || !timeEnd) return;
+    if (!isOpen || !isDraftInitialized || editingEvent || !timeStart || !timeEnd) return;
 
     setPendingEvent?.((current) =>
       current
@@ -675,12 +683,14 @@ const EventModal = forwardRef(function EventModal({
           }
         : current
     );
-  }, [budget, calendarId, calendars, categoryId, date, editingEvent, isOpen, setPendingEvent, timeEnd, timeStart, title]);
+  }, [budget, calendarId, calendars, categoryId, date, editingEvent, isDraftInitialized, isOpen, setPendingEvent, timeEnd, timeStart, title]);
 
   // Reset the visual mode before closing so the next open never animates from
   // the previous form/details state.
   function closeModal() {
     setIsEditingForm(false);
+    setIsDraftInitialized(false);
+    setPendingEvent?.(null);
     setIsOpen(false);
   }
 
