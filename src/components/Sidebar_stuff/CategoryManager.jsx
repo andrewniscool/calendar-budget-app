@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 import {
-  fetchCategories,
   createCategory,
   updateCategory,
-  deleteCategory,
-  deleteAllCategories
+  deleteCategory
 } from "../../services/categoryService";
 import { HiDotsVertical } from "react-icons/hi";
 import { MdEdit, MdDelete } from "react-icons/md";
@@ -18,7 +16,7 @@ const presetColors = [
   "#BBA6DD", "#8C7DA8", "#64557B", "#1E2136",
 ];
 
-function CategoryList({ categories, onAddClick, handleDeleteCategory, toggleVisibility, onEditClick }) {
+function CategoryList({ categories, onAddClick, handleDeleteCategory, onEditClick }) {
   const [open, setOpen] = useState(true);
   const [menuFor, setMenuFor] = useState(null);
 
@@ -65,13 +63,7 @@ function CategoryList({ categories, onAddClick, handleDeleteCategory, toggleVisi
               key={cat.category_id || i}
               className="group relative -mx-1 flex items-center gap-1 rounded-md px-1.5 py-1 transition-colors hover:bg-slate-200/60"
             >
-              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={cat.visible}
-                  onChange={() => toggleVisibility(i)}
-                  className="ui-checkbox shrink-0"
-                />
+              <div className="flex min-w-0 flex-1 items-center gap-2">
                 <span
                   className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
                   style={{ backgroundColor: cat.color }}
@@ -79,7 +71,7 @@ function CategoryList({ categories, onAddClick, handleDeleteCategory, toggleVisi
                 <span className="min-w-0 truncate text-xs font-medium text-slate-700">
                   {cat.name}
                 </span>
-              </label>
+              </div>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -122,36 +114,16 @@ function CategoryList({ categories, onAddClick, handleDeleteCategory, toggleVisi
   );
 }
 
-function CategoryManager({ categories, setCategories, calendarId }) {
+function CategoryManager({ categories, setCategories }) {
   const [error, setError] = useState("");
-  const [showToast, setShowToast] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [modalAnchorRect, setModalAnchorRect] = useState(null);
-
-  useEffect(() => {
-    if (calendarId) {
-      fetchCategories(calendarId)
-        .then((data) => {
-          const mapped = data.map((cat) => ({ ...cat, visible: true }));
-          setCategories(mapped);
-        })
-        .catch((err) => console.error("Error fetching categories:", err));
-    }
-  }, [calendarId, setCategories]);
-
-  const toggleVisibility = (index) => {
-    const updated = [...categories];
-    updated[index].visible = !updated[index].visible;
-    setCategories(updated);
-  };
 
   const handleAddCategory = (categoryData) => {
     const trimmedName = categoryData.name.trim();
 
     if (trimmedName === "") return setError("Category name cannot be empty.");
-    if (categories.length >= 10) return setError("You can only have up to 10 categories.");
-
     const nameExists = categories.some(
       (cat) => cat.name.toLowerCase() === trimmedName.toLowerCase() && cat.category_id !== categoryData.category_id
     );
@@ -162,12 +134,11 @@ function CategoryManager({ categories, setCategories, calendarId }) {
       updateCategory(categoryData.category_id, {
         name: trimmedName,
         color: categoryData.color,
-        calendarId,
       })
         .then((updatedCategory) => {
           const updatedList = categories.map((cat) =>
             cat.category_id === categoryData.category_id
-              ? { ...cat, ...updatedCategory, visible: cat.visible }
+              ? { ...cat, ...updatedCategory }
               : cat
           );
           setCategories(updatedList);
@@ -183,11 +154,9 @@ function CategoryManager({ categories, setCategories, calendarId }) {
       return;
     }
 
-    // Creating new category - include calendarId
     createCategory({
       name: trimmedName,
       color: categoryData.color,
-      calendarId: calendarId
     })
       .then((created) => {
         setCategories((prev) => [...prev, { ...created, visible: true }]);
@@ -202,36 +171,23 @@ function CategoryManager({ categories, setCategories, calendarId }) {
   };
 
   const handleDeleteCategory = (id) => {
+    const category = categories.find((item) => item.category_id === id);
+    if (!window.confirm(
+      `Delete "${category?.name || "this category"}"? It will be removed from events and recurring events across all calendars, and its saved limit will be deleted.`
+    )) return;
     deleteCategory(id)
       .then(() => setCategories((prev) => prev.filter((cat) => cat.category_id !== id)))
-      .catch((err) => console.error("Error deleting category:", err));
-  };
-
-  const handleClearAll = async () => {
-    if (window.confirm("Clear all categories?")) {
-      try {
-        await deleteAllCategories(calendarId); // pass calendarId
-        setCategories([]); // clear local state
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 3000);
-      } catch (err) {
+      .catch((err) => {
         console.error("Failed to clear categories:", err);
-        alert("Failed to clear categories. Please try again.");
-      }
-    }
+        setError(err.message || "Failed to delete category.");
+      });
   };
-
-  // Don't render if no calendarId
-  if (!calendarId) {
-    return <div className="text-xs text-slate-400">Loading categories…</div>;
-  }
 
   return (
     <div>
       <CategoryList
         categories={categories || []}
         handleDeleteCategory={handleDeleteCategory}
-        toggleVisibility={toggleVisibility}
         onAddClick={(event) => {
           setEditingCategory(null);
           setModalAnchorRect(event?.currentTarget?.getBoundingClientRect() ?? null);
@@ -258,21 +214,6 @@ function CategoryManager({ categories, setCategories, calendarId }) {
         defaultValues={editingCategory}
         anchorRect={modalAnchorRect}
       />
-
-      {(categories || []).length > 0 && (
-        <button
-          onClick={handleClearAll}
-          className="mt-3 px-1 text-[11px] font-medium text-slate-400 transition-colors hover:text-red-600"
-        >
-          Clear all categories
-        </button>
-      )}
-
-      {showToast && (
-        <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-lg">
-          Categories cleared
-        </div>
-      )}
     </div>
   );
 }

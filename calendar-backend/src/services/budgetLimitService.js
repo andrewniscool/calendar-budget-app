@@ -1,9 +1,8 @@
-import { badRequest, notFound } from '../errors.js';
+import { badRequest } from '../errors.js';
 
-function formatBudgetLimits(calendarId, period, rows) {
+function formatBudgetLimits(period, rows) {
   const overall = rows.find((row) => row.category_id === null);
   return {
-    calendarId,
     period,
     overall: overall ? Number(overall.amount) : null,
     categories: rows
@@ -17,7 +16,7 @@ function formatBudgetLimits(calendarId, period, rows) {
 
 function translateDatabaseError(error) {
   if (error.code === '23503') {
-    throw badRequest('Category must belong to the budget calendar');
+    throw badRequest('Category must belong to the budget owner');
   }
   if (error.code === '23514') {
     throw badRequest('Budget limit values violate a database constraint');
@@ -27,18 +26,15 @@ function translateDatabaseError(error) {
 
 export function createBudgetLimitService(repository) {
   return {
-    async list(userId, { calendarId, period }) {
-      const exists = await repository.calendarExists(calendarId, userId);
-      if (!exists) throw notFound('Calendar not found');
-      const rows = await repository.list(calendarId, userId, period);
-      return formatBudgetLimits(calendarId, period, rows);
+    async list(userId, { period }) {
+      const rows = await repository.list(userId, period);
+      return formatBudgetLimits(period, rows);
     },
 
     async upsert(userId, data) {
       try {
         const rows = await repository.upsertMany(userId, data);
-        if (!rows) throw notFound('Calendar not found');
-        return formatBudgetLimits(data.calendarId, data.period, rows);
+        return formatBudgetLimits(data.period, rows);
       } catch (error) {
         return translateDatabaseError(error);
       }

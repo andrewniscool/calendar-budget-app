@@ -57,11 +57,18 @@ describe('request schemas', () => {
     expect(schemas.eventCreate.safeParse(validEvent).success).toBe(true);
   });
 
+  it('defaults and validates calendar colors', () => {
+    expect(schemas.calendarCreate.parse({ name: 'Personal' }).color).toBe('#2563EB');
+    expect(schemas.calendarCreate.safeParse({ name: 'Work', color: '#16A34A' }).success).toBe(true);
+    expect(schemas.calendarCreate.safeParse({ name: 'Work', color: 'green' }).success).toBe(false);
+  });
+
   it('validates timezone, date windows, recurrence bounds, and duplicate categories', () => {
     expect(schemas.calendarSettings.safeParse({ timezone: 'Not/A_Timezone', currency: 'USD' }).success)
       .toBe(false);
-    expect(schemas.calendarSettings.safeParse({ timezone: 'America/New_York', currency: 'usd' }).success)
+    expect(schemas.calendarSettings.safeParse({ timezone: 'America/New_York' }).success)
       .toBe(true);
+    expect(schemas.financialSettings.parse({ currency: 'usd' })).toEqual({ currency: 'USD' });
     expect(schemas.eventQuery.safeParse({
       calendarId: 1,
       startDate: '2025-01-01',
@@ -77,7 +84,6 @@ describe('request schemas', () => {
       interval: 366,
     }).success).toBe(false);
     expect(schemas.budgetLimitUpsert.safeParse({
-      calendarId: 1,
       period: '2026-07',
       categories: [{ categoryId: 2, amount: 10 }, { categoryId: 2, amount: 20 }],
     }).success).toBe(false);

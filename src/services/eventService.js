@@ -12,6 +12,7 @@ let mockEvents = [
     categoryName: "Work",
     categoryColor: "#81B2D9",
     budget: 75,
+    calendarId: "dev-calendar",
   },
   {
     id: "dev-event-2",
@@ -23,6 +24,7 @@ let mockEvents = [
     categoryName: "Food",
     categoryColor: "#FFB88A",
     budget: 18,
+    calendarId: "dev-calendar",
   },
 ];
 
@@ -32,7 +34,7 @@ export const fetchEvents = async (calendarId) => {
   }
 
   if (USE_MOCK_API) {
-    return mockEvents;
+    return mockEvents.filter((event) => event.calendarId === calendarId);
   }
   
   try {

@@ -9,6 +9,7 @@ export function registerRoutes(app, {
   userController,
   calendarController,
   calendarSettingsController,
+  financialSettingsController,
   categoryController,
   eventController,
   budgetLimitController,
@@ -36,11 +37,12 @@ export function registerRoutes(app, {
   app.delete('/calendars/:id', authenticate, validate(schemas.idParams, 'params'), asyncHandler(calendarController.remove));
   app.get('/calendars/:id/settings', authenticate, validate(schemas.idParams, 'params'), asyncHandler(calendarSettingsController.get));
   app.put('/calendars/:id/settings', authenticate, validate(schemas.idParams, 'params'), validate(schemas.calendarSettings), asyncHandler(calendarSettingsController.update));
+  app.get('/financial-settings', authenticate, asyncHandler(financialSettingsController.get));
+  app.put('/financial-settings', authenticate, validate(schemas.financialSettings), asyncHandler(financialSettingsController.update));
 
-  app.get('/categories', authenticate, validate(schemas.categoryQuery, 'query'), asyncHandler(categoryController.list));
+  app.get('/categories', authenticate, asyncHandler(categoryController.list));
   app.post('/categories', authenticate, validate(schemas.categoryCreate), asyncHandler(categoryController.create));
   app.put('/categories/:id', authenticate, validate(schemas.idParams, 'params'), validate(schemas.categoryUpdate), asyncHandler(categoryController.update));
-  app.delete('/categories/all', authenticate, validate(schemas.categoryQuery, 'query'), asyncHandler(categoryController.removeAll));
   app.delete('/categories/:id', authenticate, validate(schemas.idParams, 'params'), asyncHandler(categoryController.remove));
 
   app.get('/events', authenticate, validate(schemas.eventQuery, 'query'), asyncHandler(eventController.list));

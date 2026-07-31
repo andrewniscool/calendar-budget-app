@@ -13,7 +13,12 @@ function formatHour(hour) {
 }
 
 function DayView({
+  calendars,
   categories,
+  currency,
+  defaultEventCalendarId,
+  canCreateEvent,
+  onCreateBlocked,
   events,
   editingEvent,
   setEditingEvent,
@@ -57,7 +62,14 @@ function DayView({
   }, [topPx, isToday]);
 
   function handleTimeClick(hour, e) {
+    if (!canCreateEvent) {
+      onCreateBlocked();
+      return;
+    }
     const dateStr = dayjs(today).format("YYYY-MM-DD");
+    const calendar = calendars.find(
+      (item) => item.calendar_id === defaultEventCalendarId
+    );
 
     const pending = {
       title: "New Event",
@@ -66,6 +78,8 @@ function DayView({
       date: dateStr,
       categoryId: "",
       budget: 0,
+      calendarId: defaultEventCalendarId,
+      calendarColor: calendar?.color,
     };
 
     setPendingEvent(pending);
@@ -83,11 +97,9 @@ function DayView({
     }, 0);
   }
 
-  const savedDayEvents = events.filter(
-      (event) =>
-        dayjs(event.date).isSame(dayjs(today), "day") &&
-        getCategoryForEvent(event)?.visible !== false
-    );
+  const savedDayEvents = events.filter((event) =>
+    dayjs(event.date).isSame(dayjs(today), "day")
+  );
   const previewEvent =
     pendingEvent && dayjs(pendingEvent.date).isSame(dayjs(today), "day")
       ? { ...pendingEvent, id: "preview", isPending: true }
@@ -157,15 +169,14 @@ function DayView({
           style={{ left: GUTTER, height: `${24 * rowHeight}px` }}
         >
           {dayItems.map((item) => {
-            const color =
-              item.event.categoryColor ||
-              getCategoryForEvent(item.event)?.color ||
-              "#94a3b8";
+            const color = item.event.calendarColor || "#2563EB";
             return (
               <EventBlock
                 key={item.event.id}
                 item={item}
                 color={color}
+                categoryName={getCategoryForEvent(item.event)?.name}
+                currency={currency}
                 rowHeight={rowHeight}
                 onClick={(e) => {
                   if (item.event.isPending) return;
@@ -199,7 +210,10 @@ function DayView({
         onSave={onSaveEvent}
         onDelete={onDeleteEvent}
         editingEvent={editingEvent}
+        calendars={calendars}
         categories={categories}
+        currency={currency}
+        defaultCalendarId={defaultEventCalendarId}
         selectedDate={selectedDate}
         selectedHour={selectedHour}
         anchorRect={modalAnchorRect}

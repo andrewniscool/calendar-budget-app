@@ -5,7 +5,7 @@ const recurringSelect = `
   FROM recurring_events re
   LEFT JOIN categories c
     ON c.category_id = re.category_id
-   AND c.calendar_id = re.calendar_id
+   AND c.user_id = re.user_id
 `;
 
 export function createRecurringEventRepository(db) {
@@ -35,9 +35,9 @@ export function createRecurringEventRepository(db) {
         const inserted = await client.query(
           `INSERT INTO recurring_events (
            calendar_id, category_id, title, start_date, end_date,
-           time_start, time_end, budget, frequency, interval_count
+           time_start, time_end, budget, frequency, interval_count, user_id
          )
-         SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+         SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
          WHERE EXISTS (
            SELECT 1 FROM calendars WHERE calendar_id = $1 AND user_id = $11
          )

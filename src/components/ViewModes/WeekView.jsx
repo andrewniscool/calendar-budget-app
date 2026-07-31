@@ -21,14 +21,18 @@ function formatHour(hour) {
 }
 
 function WeekView({
+  calendars,
   categories,
+  currency,
+  defaultEventCalendarId,
+  canCreateEvent,
+  onCreateBlocked,
   events,
   editingEvent,
   setEditingEvent,
   isEventModalOpen,
   setIsEventModalOpen,
   selectedDate,
-  setSelectedDate,
   selectedHour,
   setSelectedHour,
   onSaveEvent,
@@ -38,8 +42,7 @@ function WeekView({
   modalAnchorRect,
   setModalAnchorRect,
   pendingEvent,
-  setPendingEvent,
-  calendarId
+  setPendingEvent
 }) {
   const getCategoryForEvent = (event) =>
     categories.find((item) => item.category_id === event.categoryId);
@@ -119,8 +122,18 @@ function WeekView({
   useEffect(() => {
     function handleMouseUp() {
       if (isDragging && dragStart && dragEnd && dragStart.hour !== dragEnd.hour) {
+        if (!canCreateEvent) {
+          onCreateBlocked();
+          setIsDragging(false);
+          setDragStart(null);
+          setDragEnd(null);
+          return;
+        }
         const startHour = Math.min(dragStart.hour, dragEnd.hour);
         const endHour = Math.max(dragStart.hour, dragEnd.hour) + 1;
+        const calendar = calendars.find(
+          (item) => item.calendar_id === defaultEventCalendarId
+        );
 
         const pending = {
           title: "New Event",
@@ -129,6 +142,8 @@ function WeekView({
           date: dragStart.day.toISOString().split("T")[0],
           categoryId: "",
           budget: 0,
+          calendarId: defaultEventCalendarId,
+          calendarColor: calendar?.color,
         };
 
         setPendingEvent(pending);
@@ -153,14 +168,21 @@ function WeekView({
 
     window.addEventListener("mouseup", handleMouseUp);
     return () => window.removeEventListener("mouseup", handleMouseUp);
-  }, [isDragging, dragStart, dragEnd, setPendingEvent, setSelectedDate, setSelectedHour, setEditingEvent, setModalAnchorRect, setIsEventModalOpen]);
+  }, [calendars, canCreateEvent, defaultEventCalendarId, dragStart, dragEnd, isDragging, onCreateBlocked, setPendingEvent, setSelectedHour, setEditingEvent, setModalAnchorRect, setIsEventModalOpen]);
 
   function handleTimeCellClick(day, hour, e) {
     if (suppressClickRef.current) {
       suppressClickRef.current = false;
       return;
     }
+    if (!canCreateEvent) {
+      onCreateBlocked();
+      return;
+    }
     const dateStr = day.toISOString().split("T")[0];
+    const calendar = calendars.find(
+      (item) => item.calendar_id === defaultEventCalendarId
+    );
     const pending = {
       title: "New Event",
       timeStart: `${hour.toString().padStart(2, "0")}:00`,
@@ -168,6 +190,8 @@ function WeekView({
       date: dateStr,
       categoryId: "",
       budget: 0,
+      calendarId: defaultEventCalendarId,
+      calendarColor: calendar?.color,
     };
 
     setPendingEvent(pending);
@@ -306,11 +330,9 @@ function WeekView({
           style={{ left: GUTTER, height: `${24 * rowHeight}px` }}
         >
           {weekDates.map((day, dayIndex) => {
-            const savedDayEvents = events.filter(
-                (event) =>
-                  dayjs(event.date).isSame(day, "day") &&
-                  getCategoryForEvent(event)?.visible !== false
-              );
+            const savedDayEvents = events.filter((event) =>
+              dayjs(event.date).isSame(day, "day")
+            );
             const previewEvent =
               pendingEvent && dayjs(pendingEvent.date).isSame(day, "day")
                 ? { ...pendingEvent, id: "preview", isPending: true }
@@ -322,15 +344,14 @@ function WeekView({
             return (
               <div key={`events-${dayIndex}`} className="relative min-w-0">
                 {dayItems.map((item) => {
-                  const color =
-                    item.event.categoryColor ||
-                    getCategoryForEvent(item.event)?.color ||
-                    "#94a3b8";
+                  const color = item.event.calendarColor || "#2563EB";
                   return (
                     <EventBlock
                       key={item.event.id}
                       item={item}
                       color={color}
+                      categoryName={getCategoryForEvent(item.event)?.name}
+                      currency={currency}
                       rowHeight={rowHeight}
                       onClick={(e) => {
                         if (item.event.isPending) return;
@@ -364,14 +385,16 @@ function WeekView({
         onSave={onSaveEvent}
         onDelete={onDeleteEvent}
         editingEvent={editingEvent}
+        calendars={calendars}
         categories={categories}
+        currency={currency}
+        defaultCalendarId={defaultEventCalendarId}
         selectedDate={pendingEvent?.date || selectedDate}
         selectedHour={selectedHour}
         anchorRect={modalAnchorRect}
         modalPosition={modalPosition}
         setModalPosition={setModalPosition}
         setPendingEvent={setPendingEvent}
-        calendarId={calendarId}
       />
     </div>
   );

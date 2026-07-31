@@ -1,6 +1,8 @@
 import { api } from './apiClient';
 import { DEV_CALENDAR, USE_MOCK_API } from '../devConfig';
 
+export const DEFAULT_CALENDAR_COLOR = '#2563EB';
+
 let mockCalendars = [DEV_CALENDAR];
 
 export const fetchCalendars = async () => {
@@ -17,22 +19,26 @@ export const fetchCalendars = async () => {
   }
 };
 
-export const createCalendar = async (name) => {
+export const createCalendar = async (name, color = DEFAULT_CALENDAR_COLOR) => {
   if (!name || !name.trim()) {
     throw new Error("Calendar name is required");
+  }
+  if (!/^#[0-9a-fA-F]{6}$/.test(color)) {
+    throw new Error("Calendar color must be a six-digit hex value");
   }
 
   if (USE_MOCK_API) {
     const calendar = {
       calendar_id: `dev-calendar-${Date.now()}`,
       name: name.trim(),
+      color,
     };
     mockCalendars = [...mockCalendars, calendar];
     return calendar;
   }
   
   try {
-    const response = await api.post('/calendars', { name: name.trim() });
+    const response = await api.post('/calendars', { name: name.trim(), color });
     return response.data;
   } catch (error) {
     console.error("Error creating calendar:", error);

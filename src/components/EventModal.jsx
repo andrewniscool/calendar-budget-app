@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef, useLayoutEffect } from "react";
-// eslint-disable-next-line no-unused-vars
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { FiCalendar, FiClock, FiDollarSign, FiEdit2, FiTag, FiTrash2, FiX } from "react-icons/fi";
 import dayjs from "dayjs";
+import { formatCurrency } from "../utils/currency";
 
 const NO_CATEGORY_COLOR = "#cbd5e1";
-const LAST_START = 23 * 60 + 30; // latest pickable start, leaves room for an end option
+const LAST_START = 23 * 60 + 30;
 const LAST_END = 23 * 60 + 45;
 const MODAL_PADDING = 12;
 const MODAL_GAP = 8;
@@ -314,13 +314,7 @@ function CategoryField({ categories, value, onSelect }) {
         aria-expanded={open}
         className={FIELD_BUTTON}
       >
-        <span className="flex min-w-0 items-center gap-2">
-          <span
-            className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
-            style={{ backgroundColor: selected.color || NO_CATEGORY_COLOR }}
-          />
-          <span className="truncate">{selected.name}</span>
-        </span>
+        <span className="truncate">{selected.name}</span>
         <ChevronDownIcon />
       </button>
       {open && (
@@ -346,11 +340,70 @@ function CategoryField({ categories, value, onSelect }) {
                     : "text-slate-700 hover:bg-slate-50"
                 }`}
               >
+                <span className="min-w-0 flex-1 truncate">{cat.name}</span>
+                {isSelected && <CheckIcon />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CalendarField({ calendars, value, onSelect, disabled }) {
+  const { ref, open, setOpen, dropUp, toggle } = usePopover();
+  const selected = calendars.find(
+    (calendar) => String(calendar.calendar_id) === String(value)
+  );
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={disabled ? undefined : toggle}
+        aria-haspopup={disabled ? undefined : "listbox"}
+        aria-expanded={disabled ? undefined : open}
+        aria-disabled={disabled}
+        className={`${FIELD_BUTTON} ${disabled ? "cursor-not-allowed bg-slate-50 text-slate-600 hover:border-slate-200" : ""}`}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <span
+            className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
+            style={{ backgroundColor: selected?.color || NO_CATEGORY_COLOR }}
+          />
+          <span className="truncate">{selected?.name || "Choose a calendar"}</span>
+        </span>
+        {!disabled && <ChevronDownIcon />}
+      </button>
+      {open && !disabled && (
+        <div
+          role="listbox"
+          className={`${panelClass(dropUp)} max-h-52 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent`}
+        >
+          {calendars.map((calendar) => {
+            const isSelected = String(calendar.calendar_id) === String(value);
+            return (
+              <button
+                type="button"
+                key={calendar.calendar_id}
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => {
+                  onSelect(calendar.calendar_id);
+                  setOpen(false);
+                }}
+                className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm ${
+                  isSelected
+                    ? "bg-slate-100 font-medium text-slate-900"
+                    : "text-slate-700 hover:bg-slate-50"
+                }`}
+              >
                 <span
                   className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
-                  style={{ backgroundColor: cat.color || NO_CATEGORY_COLOR }}
+                  style={{ backgroundColor: calendar.color || NO_CATEGORY_COLOR }}
                 />
-                <span className="min-w-0 flex-1 truncate">{cat.name}</span>
+                <span className="min-w-0 flex-1 truncate">{calendar.name}</span>
                 {isSelected && <CheckIcon />}
               </button>
             );
@@ -473,7 +526,10 @@ const EventModal = forwardRef(function EventModal({
   onSave,
   onDelete,
   editingEvent,
+  calendars,
   categories,
+  currency,
+  defaultCalendarId,
   selectedHour,
   clickCoords,
   anchorRect,
@@ -488,10 +544,13 @@ const EventModal = forwardRef(function EventModal({
   const [timeEnd, setTimeEnd] = useState("");
   const [startTimeError, setStartTimeError] = useState("");
   const [endTimeError, setEndTimeError] = useState("");
+  const [calendarId, setCalendarId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState(editingEvent?.date || new Date().toISOString().split("T")[0]);
   const [renderPos, setRenderPos] = useState(null);
   const [isEditingForm, setIsEditingForm] = useState(false);
+  const [isDraftInitialized, setIsDraftInitialized] = useState(false);
+  const openSessionRef = useRef(false);
   // Details is the synchronous default for existing events. The explicit
   // flag only becomes true after the user presses Edit, avoiding a stale form
   // frame when reopening an event.
@@ -546,40 +605,54 @@ const EventModal = forwardRef(function EventModal({
   }, [isOpen, modalMode, anchorRect, clickCoords, modalPosition]);
 
   useEffect(() => {
-    if (isOpen) {
-      setStartTimeError("");
-      setEndTimeError("");
-      if (editingEvent) {
-        setDate(new Date(editingEvent.date).toISOString().split("T")[0]);
-        setTitle(editingEvent.title || "");
-        setBudget(editingEvent.budget || "");
-        setTimeStart(editingEvent.timeStart || "");
-        setTimeEnd(editingEvent.timeEnd || "");
-        setCategoryId(String(editingEvent.categoryId || ""));
-      } else {
-        const defaultDate = selectedDate || new Date().toISOString().split("T")[0];
-        const now = new Date();
-        const nowQuarter = Math.min(
-          Math.ceil((now.getHours() * 60 + now.getMinutes()) / 15) * 15,
-          LAST_START
-        );
-        const hasHour = selectedHour !== undefined && selectedHour !== null;
-        const start = hasHour
-          ? selectedHour.toString().padStart(2, "0") + ":00"
-          : toHHMM(nowQuarter);
-        const end = hasHour
-          ? ((selectedHour + 1) % 24).toString().padStart(2, "0") + ":00"
-          : toHHMM(Math.min(nowQuarter + 60, LAST_END));
-
-        setDate(defaultDate);
-        setTitle("");
-        setBudget("");
-        setTimeStart(start);
-        setTimeEnd(end);
-        setCategoryId("");
-      }
+    if (!isOpen) {
+      openSessionRef.current = false;
+      setIsDraftInitialized(false);
+      return;
     }
-  }, [isOpen, editingEvent, selectedHour, selectedDate]);
+    if (openSessionRef.current) return;
+
+    openSessionRef.current = true;
+    setStartTimeError("");
+    setEndTimeError("");
+    if (editingEvent) {
+      setDate(new Date(editingEvent.date).toISOString().split("T")[0]);
+      setTitle(editingEvent.title || "");
+      setBudget(editingEvent.budget || "");
+      setTimeStart(editingEvent.timeStart || "");
+      setTimeEnd(editingEvent.timeEnd || "");
+      setCalendarId(editingEvent.calendarId);
+      setCategoryId(String(editingEvent.categoryId || ""));
+    } else {
+      const defaultDate = selectedDate || new Date().toISOString().split("T")[0];
+      const now = new Date();
+      const nowQuarter = Math.min(
+        Math.ceil((now.getHours() * 60 + now.getMinutes()) / 15) * 15,
+        LAST_START
+      );
+      const hasHour = selectedHour !== undefined && selectedHour !== null;
+      const start = hasHour
+        ? selectedHour.toString().padStart(2, "0") + ":00"
+        : toHHMM(nowQuarter);
+      const end = hasHour
+        ? ((selectedHour + 1) % 24).toString().padStart(2, "0") + ":00"
+        : toHHMM(Math.min(nowQuarter + 60, LAST_END));
+
+      setDate(defaultDate);
+      setTitle("");
+      setBudget("");
+      setTimeStart(start);
+      setTimeEnd(end);
+      setCalendarId(defaultCalendarId || "");
+      setCategoryId("");
+    }
+    setIsDraftInitialized(true);
+  }, [defaultCalendarId, isOpen, editingEvent, selectedHour, selectedDate]);
+
+  const activeCalendarId = editingEvent?.calendarId ?? calendarId;
+  function handleCalendarSelect(nextCalendarId) {
+    setCalendarId(nextCalendarId);
+  }
 
   useEffect(() => {
     if (!isOpen) {
@@ -591,7 +664,7 @@ const EventModal = forwardRef(function EventModal({
   // Because the preview is laid out with saved events, changes to its time or
   // date also update its collision position immediately.
   useEffect(() => {
-    if (!isOpen || editingEvent || !timeStart || !timeEnd) return;
+    if (!isOpen || !isDraftInitialized || editingEvent || !timeStart || !timeEnd) return;
 
     setPendingEvent?.((current) =>
       current
@@ -602,28 +675,38 @@ const EventModal = forwardRef(function EventModal({
             timeStart,
             timeEnd,
             categoryId,
+            calendarId,
+            calendarColor: calendars.find(
+              (calendar) => String(calendar.calendar_id) === String(calendarId)
+            )?.color,
             date,
           }
         : current
     );
-  }, [isOpen, editingEvent, title, budget, timeStart, timeEnd, categoryId, date, setPendingEvent]);
+  }, [budget, calendarId, calendars, categoryId, date, editingEvent, isDraftInitialized, isOpen, setPendingEvent, timeEnd, timeStart, title]);
 
   // Reset the visual mode before closing so the next open never animates from
   // the previous form/details state.
   function closeModal() {
     setIsEditingForm(false);
+    setIsDraftInitialized(false);
+    setPendingEvent?.(null);
     setIsOpen(false);
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (startTimeError || endTimeError) return;
-    await onSave({ title, date, budget, timeStart, timeEnd, categoryId });
+    if (!calendarId) return;
+    await onSave({ title, date, budget, timeStart, timeEnd, categoryId, calendarId });
     closeModal();
   }
 
   function handleDelete() {
-    if (editingEvent) {
+    if (
+      editingEvent &&
+      window.confirm(`Delete "${editingEvent.title || "Untitled event"}"? This cannot be undone.`)
+    ) {
       onDelete(editingEvent);
       closeModal();
     }
@@ -647,9 +730,10 @@ const EventModal = forwardRef(function EventModal({
   const startOptions = quarterOptions(0, LAST_START, timeStart);
   const endOptions = quarterOptions(startMin + 15, LAST_END, timeEnd, startMin);
 
-  const activeColor =
-    categories.find((c) => String(c.category_id) === String(categoryId))?.color ||
-    NO_CATEGORY_COLOR;
+  const activeCalendar = calendars.find(
+    (calendar) => String(calendar.calendar_id) === String(activeCalendarId)
+  );
+  const activeColor = activeCalendar?.color || editingEvent?.calendarColor || NO_CATEGORY_COLOR;
 
   return (
     <AnimatePresence>
@@ -729,8 +813,31 @@ const EventModal = forwardRef(function EventModal({
                     <div className="space-y-2 border-t border-slate-100 pt-3 text-sm text-slate-700">
                       <p className="flex items-center gap-2.5"><FiCalendar className="h-4 w-4 shrink-0 text-slate-400" />{dayjs(editingEvent.date).format("dddd, MMMM D, YYYY")}</p>
                       <p className="flex items-center gap-2.5"><FiClock className="h-4 w-4 shrink-0 text-slate-400" /><span className="tabular-nums">{timeLabel(toMinutes(editingEvent.timeStart))} – {timeLabel(toMinutes(editingEvent.timeEnd))}</span></p>
-                      <p className="flex items-center gap-2.5"><FiTag className="h-4 w-4 shrink-0 text-slate-400" />{categories.find((category) => String(category.category_id) === String(editingEvent.categoryId))?.name || "No category"}</p>
-                      <p className="flex items-center gap-2.5"><FiDollarSign className="h-4 w-4 shrink-0 text-slate-400" /><span className="tabular-nums">${Number(editingEvent.budget || 0).toFixed(2)} budget</span></p>
+                      <p className="flex items-center gap-2.5">
+                        <span
+                          className="h-3.5 w-3.5 shrink-0 rounded-[4px]"
+                          style={{ backgroundColor: activeColor }}
+                        />
+                        {activeCalendar?.name || editingEvent.calendarName}
+                      </p>
+                      {editingEvent.categoryId && (
+                        <p className="flex items-center gap-2.5">
+                          <FiTag className="h-4 w-4 shrink-0 text-slate-400" />
+                          {categories.find(
+                            (category) =>
+                              String(category.category_id) ===
+                              String(editingEvent.categoryId)
+                          )?.name || editingEvent.categoryName}
+                        </p>
+                      )}
+                      {Number(editingEvent.budget) > 0 && (
+                        <p className="flex items-center gap-2.5">
+                          <FiDollarSign className="h-4 w-4 shrink-0 text-slate-400" />
+                          <span className="tabular-nums">
+                            {formatCurrency(editingEvent.budget, currency)} cost
+                          </span>
+                        </p>
+                      )}
                     </div>
                   </motion.div>
                 ) : (
@@ -752,6 +859,21 @@ const EventModal = forwardRef(function EventModal({
                     onChange={(e) => setTitle(e.target.value)}
                     autoFocus
                   />
+                </div>
+
+                <div>
+                  <FieldLabel>Calendar *</FieldLabel>
+                  <CalendarField
+                    calendars={calendars}
+                    value={calendarId}
+                    onSelect={handleCalendarSelect}
+                    disabled={Boolean(editingEvent)}
+                  />
+                  {editingEvent && (
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      Existing events cannot be moved in this phase.
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -792,14 +914,14 @@ const EventModal = forwardRef(function EventModal({
                 </div>
 
                 <div>
-                  <FieldLabel>Budget</FieldLabel>
+                  <FieldLabel>Cost</FieldLabel>
                   <div className="relative">
                     <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-slate-400">
-                      $
+                      {currency}
                     </span>
                     <input
                       type="number"
-                      className={`${FIELD_INPUT} pl-6`}
+                      className={`${FIELD_INPUT} pl-12`}
                       placeholder="0.00"
                       value={budget}
                       onChange={(e) => setBudget(e.target.value)}
@@ -835,7 +957,8 @@ const EventModal = forwardRef(function EventModal({
                   </button>
                   <button
                     type="submit"
-                    className="rounded-md bg-slate-900 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-700"
+                    disabled={!calendarId}
+                    className="rounded-md bg-slate-900 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
                   >
                     {editingEvent ? "Save changes" : "Create event"}
                   </button>

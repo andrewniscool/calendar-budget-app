@@ -9,7 +9,12 @@ import { useState } from 'react';
 function Calendar({
     viewMode,
     setViewMode,
+    calendars,
     categories,
+    currency,
+    defaultEventCalendarId,
+    canCreateEvent,
+    onCreateBlocked,
     events,
     editingEvent,
     setEditingEvent,
@@ -33,7 +38,12 @@ function Calendar({
       // return <DayView {...props} />;
       return (
         <DayView
+          calendars={calendars}
           categories={categories}
+          currency={currency}
+          defaultEventCalendarId={defaultEventCalendarId}
+          canCreateEvent={canCreateEvent}
+          onCreateBlocked={onCreateBlocked}
           events={events}
           editingEvent={editingEvent}
           setEditingEvent={setEditingEvent}
@@ -56,7 +66,12 @@ function Calendar({
     case 'month':
       return (
         <MonthView
+          calendars={calendars}
           categories={categories}
+          currency={currency}
+          defaultEventCalendarId={defaultEventCalendarId}
+          canCreateEvent={canCreateEvent}
+          onCreateBlocked={onCreateBlocked}
           events={events}
           editingEvent={editingEvent}
           setEditingEvent={setEditingEvent}
@@ -90,7 +105,12 @@ function Calendar({
     default:
       return (
         <WeekView
+          calendars={calendars}
           categories={categories}
+          currency={currency}
+          defaultEventCalendarId={defaultEventCalendarId}
+          canCreateEvent={canCreateEvent}
+          onCreateBlocked={onCreateBlocked}
           events={events}
           editingEvent={editingEvent}
           setEditingEvent={setEditingEvent}

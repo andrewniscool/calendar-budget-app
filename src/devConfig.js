@@ -16,4 +16,5 @@ export const DEV_USER = {
 export const DEV_CALENDAR = {
   calendar_id: "dev-calendar",
   name: "UI Sandbox",
+  color: "#2563EB",
 };

@@ -74,10 +74,10 @@ CSRF uses a signed, readable cookie plus a matching `X-CSRF-Token` header. CORS 
 | POST | `/auth/reset-password` | Consume a reset token and revoke all sessions |
 | GET/POST | `/calendars` | List/create calendars |
 | DELETE | `/calendars/:id` | Delete an owned calendar |
-| GET/PUT | `/calendars/:id/settings` | Read/update timezone and currency |
-| GET/POST | `/categories` | List/create calendar categories |
+| GET/PUT | `/calendars/:id/settings` | Read/update calendar timezone |
+| GET/PUT | `/financial-settings` | Read/update user financial currency |
+| GET/POST | `/categories` | List/create shared financial categories |
 | PUT/DELETE | `/categories/:id` | Update/delete an owned category |
-| DELETE | `/categories/all` | Delete all categories in an owned calendar |
 | GET/POST | `/events` | List/create events |
 | PUT/DELETE | `/events/:id` | Update/delete an owned event |
 | GET/PUT | `/budget-limits` | Read or atomically update monthly limits |
@@ -85,6 +85,93 @@ CSRF uses a signed, readable cookie plus a matching `X-CSRF-Token` header. CORS 
 | PUT/DELETE | `/recurring-events/:id` | Update/delete a recurring definition |
 
 Successful response bodies remain compatible with the frontend. Stable special errors include `DATE_RANGE_REQUIRED` for an unbounded calendar above 1,000 events and `LIMIT_REACHED` for resource quotas.
+
+### Calling convention
+
+All request and response bodies are JSON. All private endpoints require the
+`cb_access` HttpOnly cookie. Every unsafe request (`POST`, `PUT`, `PATCH`, or
+`DELETE`) also requires the signed `cb_csrf` cookie and an identical
+`X-CSRF-Token` header. Start a browser session with `GET /auth/csrf`; a
+successful login and refresh also issue a new CSRF token. The frontend's
+`src/services/apiClient.js` performs this automatically.
+
+Validation is strict: unknown body/query fields are rejected. IDs are positive
+integers; dates use `YYYY-MM-DD`; times use `HH:mm` (seconds are also accepted);
+money is a non-negative number with at most two decimal places. Errors use:
+
+```json
+{
+  "error": "Human-readable explanation",
+  "message": "Human-readable explanation",
+  "code": "BAD_REQUEST",
+  "requestId": "server-generated UUID"
+}
+```
+
+The common status codes are `400` (validation/business input), `401`
+(missing/invalid session), `403` (CSRF or origin), `404` (resource not owned or
+absent), `409` (conflict or quota), `413` (body exceeds 100 KB), `429` (rate
+limit), and `500`. `GET /health/live` and `GET /health/ready` are public.
+
+### Resource contracts
+
+| Resource | Required input | Result and important behavior |
+| --- | --- | --- |
+| Auth | Register: `username`, `email`, `password`; login: `email`, `password`; verification/reset: `token` (and reset `password`) | Register, resend, and forgot-password return `202` to avoid account enumeration. Login/refresh return `{ user }` and set cookies. A user must verify email before logging in. |
+| Calendars | Create `{ name, color? }` | `color` is `#RRGGBB` and defaults to `#2563EB`. `GET /calendars` returns rows with `calendar_id`, `name`, `color`, and `created_at`. Create/delete return the affected row. Maximum 50 calendars per user. |
+| Calendar settings | `{ timezone }` | `GET` returns `{ calendar_id, timezone }`; timezone defaults to `America/New_York` and must be IANA. |
+| Financial settings | `{ currency }` | `GET`/`PUT` return `{ currency }`; currency defaults to `USD` and must be a three-letter ISO code. |
+| Categories | `{ name, color }` | Categories are shared across the user's calendars. `color` remains secondary `#RRGGBB` metadata. List/create/update return `{ category_id, name, color }`. Maximum 500 per user. |
+| Events | `{ calendarId, title, date, timeStart, timeEnd, categoryId?, budget? }` | List takes `calendarId` plus optional `startDate`/`endDate` (both required together for a bounded range, maximum 366 days). Returned event rows use database-style keys such as `time_start`, `category_name`, and `category_color`. Updating an event changes its fields but does not move it to a different calendar. |
+| Budget limits | Query/body `{ period: "YYYY-MM" }`; write also has `overall?` and `categories: [{ categoryId, amount }]` | Limits are global to the user. `GET`/`PUT` return `{ period, overall, categories }`. A write is transactional and upserts only supplied limits; omitting a limit does not delete an existing one. |
+| Recurring events | `{ calendarId, categoryId?, title, startDate, endDate?, timeStart, timeEnd, budget?, frequency, interval? }` | `frequency` is `daily`, `weekly`, or `monthly`; `interval` defaults to 1. These are recurrence definitions, not materialized rows in `events`. Maximum 500 definitions per calendar. |
+
+Deleting a calendar cascades to its settings, events, and recurring
+definitions, but shared categories and global limits survive. Deleting a
+category sets its reference to `NULL` on events and recurring definitions
+across the user's calendars and deletes that category's limit. A supplied
+category must belong to the authenticated user.
+
+### Authentication lifecycle
+
+1. `POST /auth/register` hashes the password with bcrypt, creates an
+   unverified user plus a one-time verification token, and inserts a mail job
+   in the same database transaction.
+2. The worker claims mail jobs using `FOR UPDATE SKIP LOCKED`, sends the mail,
+   retries failures with exponential backoff (up to eight attempts), and clears
+   token payloads after completion or terminal failure.
+3. `POST /auth/verify-email` consumes the hashed one-time token. `POST
+   /auth/login` then issues a 15-minute signed access JWT and a 30-day random
+   refresh token by default. Only token hashes are stored in PostgreSQL.
+4. `POST /auth/refresh` rotates the refresh token. Reuse of an already rotated
+   token revokes its entire token family. A password reset increments
+   `auth_version` and revokes every refresh token, which makes existing access
+   JWTs fail on their next database-backed authentication check.
+
+Cookie names are `cb_access` (HttpOnly, path `/`), `cb_refresh` (HttpOnly,
+path `/auth`), and `cb_csrf` (readable). They use `SameSite=Lax`; set
+`COOKIE_SECURE=true` over HTTPS.
+
+## Data model
+
+`users` own calendars, shared categories, global budget limits, and financial
+settings. A calendar owns events, optional timezone settings, and recurring
+events. Composite owner foreign keys preserve tenant consistency. `refresh_tokens`
+track session families. `account_tokens` hold hashed email-verification and
+password-reset tokens, while `mail_outbox` makes email delivery reliable across
+API crashes. The baseline migration also supplies foreign keys, checks,
+indexes, uniqueness constraints, and cascade rules; it is the schema source of
+truth.
+
+## Working in the code
+
+To add a feature, follow the existing vertical slice: define the strict schema
+in `validation.js`, add its route in `routes.js`, keep HTTP translation in a
+controller, place domain rules/errors in a service, and put all SQL plus
+ownership checks in a repository. `app.js` is the composition root that wires
+those layers together. Use `withTransaction` from `db.js` for multi-query
+changes; repositories use parameterized queries and scope private resources to
+the authenticated user.
 
 ## Development
 

@@ -3,7 +3,7 @@ const eventSelect = `
   FROM events e
   LEFT JOIN categories c
     ON c.category_id = e.category_id
-   AND c.calendar_id = e.calendar_id
+   AND c.user_id = e.user_id
 `;
 
 export function createEventRepository(db) {
@@ -43,9 +43,9 @@ export function createEventRepository(db) {
     async create(data, userId) {
       const inserted = await db.query(
         `INSERT INTO events (
-           title, date, time_start, time_end, category_id, budget, calendar_id
+           title, date, time_start, time_end, category_id, budget, calendar_id, user_id
          )
-         SELECT $1, $2, $3, $4, $5, $6, $7
+         SELECT $1, $2, $3, $4, $5, $6, $7, $8
          WHERE EXISTS (
            SELECT 1 FROM calendars WHERE calendar_id = $7 AND user_id = $8
          )

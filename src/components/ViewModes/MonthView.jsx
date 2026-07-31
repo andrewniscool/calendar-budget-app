@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React from "react";
 import dayjs from "dayjs";
 import EventModal from "../EventModal";
+import { formatCurrency } from "../../utils/currency";
 
 const MAX_VISIBLE_EVENTS = 3;
 
@@ -9,9 +10,24 @@ function MonthView({
   setSelectedDate,
   onSaveEvent,
   onDeleteEvent,
+  calendars,
   categories,
+  currency,
+  defaultEventCalendarId,
+  canCreateEvent,
+  onCreateBlocked,
   selectedDate,
-  events
+  events,
+  editingEvent,
+  setEditingEvent,
+  isEventModalOpen,
+  setIsEventModalOpen,
+  modalPosition,
+  setModalPosition,
+  modalAnchorRect,
+  setModalAnchorRect,
+  pendingEvent,
+  setPendingEvent,
 }) {
   const currentMonth = dayjs(selectedDate);
   const startOfMonth = currentMonth.startOf("month");
@@ -20,14 +36,6 @@ function MonthView({
 
   const prevMonth = currentMonth.subtract(1, "month");
   const nextMonth = currentMonth.add(1, "month");
-
-  const [pendingEvent, setPendingEvent] = useState(null);
-  const [modalPosition, setModalPosition] = useState(null);
-  const [modalAnchorRect, setModalAnchorRect] = useState(null);
-  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState(null);
-  const getCategoryForEvent = (event) =>
-    categories.find((item) => item.category_id === event.categoryId);
 
   const days = [];
 
@@ -58,9 +66,16 @@ function MonthView({
 
   const handleDayCellClick = (e, entry) => {
     e.stopPropagation();
+    if (!canCreateEvent) {
+      onCreateBlocked();
+      return;
+    }
     setEditingEvent(null);
 
     const dateStr = entry.date.format("YYYY-MM-DD");
+    const calendar = calendars.find(
+      (item) => item.calendar_id === defaultEventCalendarId
+    );
     setPendingEvent({
       title: "",
       date: dateStr,
@@ -68,6 +83,8 @@ function MonthView({
       timeEnd: "01:00",
       categoryId: "",
       budget: 0,
+      calendarId: defaultEventCalendarId,
+      calendarColor: calendar?.color,
     });
 
     setModalAnchorRect(e.currentTarget.getBoundingClientRect());
@@ -97,10 +114,8 @@ function MonthView({
             !isToday && entry.date.isSame(dayjs(selectedDate), "day");
           const isPending = pendingEvent?.date === entry.date.format("YYYY-MM-DD");
 
-          const dayEvents = events.filter(
-            (event) =>
-              dayjs(event.date).isSame(entry.date, "day") &&
-              getCategoryForEvent(event)?.visible !== false
+          const dayEvents = events.filter((event) =>
+            dayjs(event.date).isSame(entry.date, "day")
           );
           const visibleEvents = dayEvents.slice(0, MAX_VISIBLE_EVENTS);
           const hiddenCount = dayEvents.length - visibleEvents.length;
@@ -138,10 +153,7 @@ function MonthView({
 
               <div className="min-w-0 space-y-0.5 overflow-hidden">
                 {visibleEvents.map((event) => {
-                  const color =
-                    event.categoryColor ||
-                    getCategoryForEvent(event)?.color ||
-                    "#94a3b8";
+                  const color = event.calendarColor || "#2563EB";
                   return (
                     <div
                       key={event.id}
@@ -163,7 +175,7 @@ function MonthView({
                       <span className="truncate">{event.title}</span>
                       {event.budget > 0 && (
                         <span className="ml-auto shrink-0 text-[10px] tabular-nums text-slate-400">
-                          ${event.budget}
+                          {formatCurrency(event.budget, currency)}
                         </span>
                       )}
                     </div>
@@ -185,12 +197,14 @@ function MonthView({
         setIsOpen={setIsEventModalOpen}
         onSave={async (eventData) => {
           await onSaveEvent(eventData);
-          setIsEventModalOpen(false);
           setPendingEvent(null);
         }}
         onDelete={onDeleteEvent}
         editingEvent={editingEvent}
+        calendars={calendars}
         categories={categories}
+        currency={currency}
+        defaultCalendarId={defaultEventCalendarId}
         selectedDate={pendingEvent?.date}
         selectedHour={0}
         anchorRect={modalAnchorRect}

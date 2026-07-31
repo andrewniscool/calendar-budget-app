@@ -2,7 +2,7 @@ import { badRequest, dateRangeRequired, notFound } from '../errors.js';
 
 function translateDatabaseError(error) {
   if (error.code === '23503') {
-    throw badRequest('Category must belong to the event calendar');
+    throw badRequest('Category must belong to the event owner');
   }
   if (error.code === '23514') {
     throw badRequest('Event values violate a database constraint');

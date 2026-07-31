@@ -2,7 +2,7 @@ import { badRequest, limitReached, notFound } from '../errors.js';
 
 function translateDatabaseError(error) {
   if (error.code === '23503') {
-    throw badRequest('Category must belong to the recurring event calendar');
+    throw badRequest('Category must belong to the recurring event owner');
   }
   if (error.code === '23514') {
     throw badRequest('Recurring event values violate a database constraint');

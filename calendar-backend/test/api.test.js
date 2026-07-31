@@ -72,11 +72,11 @@ async function registerVerifyLogin(username = 'test-user', email = `${username}@
   return { agent, csrfToken: decodeURIComponent(csrfToken), login };
 }
 
-async function createCalendar(session, name = 'Primary') {
+async function createCalendar(session, name = 'Primary', color) {
   const response = await post(
     session.agent,
     '/calendars',
-    { name },
+    color ? { name, color } : { name },
     session.csrfToken
   ).expect(201);
   return response.body;
@@ -332,7 +332,13 @@ describe('tenant resources with cookie authentication', () => {
   it('isolates calendars and supports authenticated create/delete behavior', async () => {
     const first = await registerVerifyLogin('first-user', 'first@example.com');
     const second = await registerVerifyLogin('second-user', 'second@example.com');
-    const calendar = await createCalendar(first);
+    const calendar = await createCalendar(first, 'Primary', '#16A34A');
+
+    expect(calendar).toMatchObject({ name: 'Primary', color: '#16A34A' });
+    await first.agent.get('/calendars').expect(200).expect(({ body }) => {
+      expect(body).toHaveLength(1);
+      expect(body[0]).toMatchObject({ name: 'Primary', color: '#16A34A' });
+    });
 
     await second.agent.delete(`/calendars/${calendar.calendar_id}`)
       .set('X-CSRF-Token', second.csrfToken)
@@ -340,25 +346,112 @@ describe('tenant resources with cookie authentication', () => {
     await second.agent.get('/calendars').expect(200, []);
   });
 
-  it('retains category/calendar constraints for authenticated event writes', async () => {
+  it('uses the default calendar color and rejects invalid colors', async () => {
+    const session = await registerVerifyLogin('color-user', 'color@example.com');
+    const calendar = await createCalendar(session);
+    expect(calendar.color).toBe('#2563EB');
+
+    await post(session.agent, '/calendars', {
+      name: 'Invalid',
+      color: 'blue',
+    }, session.csrfToken).expect(400);
+  });
+
+  it('shares categories across owned calendars and rejects another tenant category', async () => {
     const session = await registerVerifyLogin('event-user', 'event@example.com');
+    const other = await registerVerifyLogin('other-event-user', 'other-event@example.com');
     const first = await createCalendar(session, 'First');
-    const second = await createCalendar(session, 'Second');
     const category = await post(session.agent, '/categories', {
-      calendarId: second.calendar_id,
-      name: 'Other',
+      name: 'Food',
       color: '#123456',
     }, session.csrfToken).expect(201);
 
-    await post(session.agent, '/events', {
+    const shared = await post(session.agent, '/events', {
       calendarId: first.calendar_id,
       categoryId: category.body.category_id,
-      title: 'Invalid category',
+      title: 'Shared category',
       date: '2026-06-08',
       timeStart: '09:00',
       timeEnd: '10:00',
       budget: 10,
+    }, session.csrfToken).expect(201);
+    expect(shared.body.category_name).toBe('Food');
+
+    const otherCategory = await post(other.agent, '/categories', {
+      name: 'Private',
+      color: '#654321',
+    }, other.csrfToken).expect(201);
+    await post(session.agent, '/events', {
+      calendarId: first.calendar_id,
+      categoryId: otherCategory.body.category_id,
+      title: 'Invalid category',
+      date: '2026-06-08',
+      timeStart: '10:00',
+      timeEnd: '11:00',
     }, session.csrfToken).expect(400);
+  });
+
+  it('keeps shared categories when a calendar is deleted and clears global references on category deletion', async () => {
+    const session = await registerVerifyLogin('lifecycle-user', 'lifecycle@example.com');
+    const first = await createCalendar(session, 'First');
+    const second = await createCalendar(session, 'Second');
+    const category = await post(session.agent, '/categories', {
+      name: 'Food',
+      color: '#123456',
+    }, session.csrfToken).expect(201);
+
+    const event = await post(session.agent, '/events', {
+      calendarId: second.calendar_id,
+      categoryId: category.body.category_id,
+      title: 'Dinner',
+      date: '2026-06-08',
+      timeStart: '18:00',
+      timeEnd: '19:00',
+      budget: 20,
+    }, session.csrfToken).expect(201);
+
+    await session.agent.put('/budget-limits')
+      .set('X-CSRF-Token', session.csrfToken)
+      .send({
+        period: '2026-06',
+        categories: [{ categoryId: category.body.category_id, amount: 200 }],
+      })
+      .expect(200);
+
+    await session.agent.delete(`/calendars/${first.calendar_id}`)
+      .set('X-CSRF-Token', session.csrfToken)
+      .expect(200);
+    await session.agent.get('/categories').expect(200).expect(({ body }) => {
+      expect(body.map((item) => item.category_id)).toContain(category.body.category_id);
+    });
+
+    await session.agent.delete(`/categories/${category.body.category_id}`)
+      .set('X-CSRF-Token', session.csrfToken)
+      .expect(200);
+    const storedEvent = await session.agent
+      .get(`/events?calendarId=${second.calendar_id}`)
+      .expect(200);
+    expect(storedEvent.body.find((item) => item.id === event.body.id).category_id).toBeNull();
+    await session.agent.get('/budget-limits?period=2026-06').expect(200).expect(({ body }) => {
+      expect(body.categories).toEqual([]);
+    });
+  });
+
+  it('enforces normalized category names per user but permits the same name for another user', async () => {
+    const first = await registerVerifyLogin('category-user', 'category@example.com');
+    const second = await registerVerifyLogin('category-user-two', 'category-two@example.com');
+    await post(first.agent, '/categories', {
+      name: ' Food ',
+      color: '#123456',
+    }, first.csrfToken).expect(201);
+    await post(first.agent, '/categories', {
+      name: 'food',
+      color: '#654321',
+    }, first.csrfToken).expect(409);
+    await post(second.agent, '/categories', {
+      name: 'FOOD',
+      color: '#654321',
+    }, second.csrfToken).expect(201);
   });
 
   it('filters events by date range while preserving all-events fallback', async () => {
@@ -396,10 +489,10 @@ describe('tenant resources with cookie authentication', () => {
     const session = await registerVerifyLogin('large-user', 'large@example.com');
     const calendar = await createCalendar(session);
     await db.query(
-      `INSERT INTO events (calendar_id, title, date, time_start, time_end, budget)
-       SELECT $1, 'Generated ' || value, DATE '2026-01-01', TIME '09:00', TIME '10:00', 0
+      `INSERT INTO events (calendar_id, user_id, title, date, time_start, time_end, budget)
+       SELECT $1, $2, 'Generated ' || value, DATE '2026-01-01', TIME '09:00', TIME '10:00', 0
        FROM GENERATE_SERIES(1, 1001) AS value`,
-      [calendar.calendar_id]
+      [calendar.calendar_id, session.login.body.user.id]
     );
 
     const unbounded = await session.agent
@@ -413,9 +506,7 @@ describe('tenant resources with cookie authentication', () => {
 
   it('stores budget limits for an overall month and category-specific limits', async () => {
     const session = await registerVerifyLogin('budget-user', 'budget@example.com');
-    const calendar = await createCalendar(session);
     const category = await post(session.agent, '/categories', {
-      calendarId: calendar.calendar_id,
       name: 'Food',
       color: '#123456',
     }, session.csrfToken).expect(201);
@@ -424,7 +515,6 @@ describe('tenant resources with cookie authentication', () => {
       .put('/budget-limits')
       .set('X-CSRF-Token', session.csrfToken)
       .send({
-        calendarId: calendar.calendar_id,
         period: '2026-06',
         overall: 1000,
         categories: [{ categoryId: category.body.category_id, amount: 250.5 }],
@@ -432,33 +522,29 @@ describe('tenant resources with cookie authentication', () => {
       .expect(200);
 
     expect(saved.body).toEqual({
-      calendarId: calendar.calendar_id,
       period: '2026-06',
       overall: 1000,
       categories: [{ categoryId: category.body.category_id, amount: 250.5 }],
     });
 
     const listed = await session.agent
-      .get(`/budget-limits?calendarId=${calendar.calendar_id}&period=2026-06`)
+      .get('/budget-limits?period=2026-06')
       .expect(200);
     expect(listed.body).toEqual(saved.body);
   });
 
-  it('keeps budget limits tenant-scoped and rejects categories from another calendar', async () => {
+  it('keeps global budget limits tenant-scoped', async () => {
     const session = await registerVerifyLogin('budget-scope-user', 'budget-scope@example.com');
-    const first = await createCalendar(session, 'First');
-    const second = await createCalendar(session, 'Second');
-    const category = await post(session.agent, '/categories', {
-      calendarId: second.calendar_id,
+    const other = await registerVerifyLogin('other-budget-user', 'other-budget@example.com');
+    const category = await post(other.agent, '/categories', {
       name: 'Other',
       color: '#123456',
-    }, session.csrfToken).expect(201);
+    }, other.csrfToken).expect(201);
 
     await session.agent
       .put('/budget-limits')
       .set('X-CSRF-Token', session.csrfToken)
       .send({
-        calendarId: first.calendar_id,
         period: '2026-06',
         categories: [{ categoryId: category.body.category_id, amount: 50 }],
       })
@@ -467,9 +553,7 @@ describe('tenant resources with cookie authentication', () => {
 
   it('rolls back the full budget batch when any category is invalid', async () => {
     const session = await registerVerifyLogin('rollback-user', 'rollback@example.com');
-    const calendar = await createCalendar(session);
     const category = await post(session.agent, '/categories', {
-      calendarId: calendar.calendar_id,
       name: 'Valid',
       color: '#123456',
     }, session.csrfToken).expect(201);
@@ -477,7 +561,6 @@ describe('tenant resources with cookie authentication', () => {
     await session.agent.put('/budget-limits')
       .set('X-CSRF-Token', session.csrfToken)
       .send({
-        calendarId: calendar.calendar_id,
         period: '2026-07',
         overall: 1000,
         categories: [
@@ -492,20 +575,18 @@ describe('tenant resources with cookie authentication', () => {
 
   it('rejects duplicate budget categories and unknown request fields', async () => {
     const session = await registerVerifyLogin('validation-user', 'validation@example.com');
-    const calendar = await createCalendar(session);
     await post(session.agent, '/calendars', { name: 'Extra', unknown: true }, session.csrfToken)
       .expect(400);
     await session.agent.put('/budget-limits')
       .set('X-CSRF-Token', session.csrfToken)
       .send({
-        calendarId: calendar.calendar_id,
         period: '2026-07',
         categories: [{ categoryId: 1, amount: 10 }, { categoryId: 1, amount: 20 }],
       })
       .expect(400);
   });
 
-  it('returns default calendar settings and updates timezone/currency', async () => {
+  it('stores calendar timezone and user-level financial currency settings', async () => {
     const session = await registerVerifyLogin('settings-user', 'settings@example.com');
     const calendar = await createCalendar(session);
 
@@ -515,26 +596,29 @@ describe('tenant resources with cookie authentication', () => {
     expect(defaults.body).toEqual({
       calendar_id: calendar.calendar_id,
       timezone: 'America/New_York',
-      currency: 'USD',
     });
 
     const updated = await session.agent
       .put(`/calendars/${calendar.calendar_id}/settings`)
       .set('X-CSRF-Token', session.csrfToken)
-      .send({ timezone: 'America/Los_Angeles', currency: 'cad' })
+      .send({ timezone: 'America/Los_Angeles' })
       .expect(200);
     expect(updated.body).toEqual({
       calendar_id: calendar.calendar_id,
       timezone: 'America/Los_Angeles',
-      currency: 'CAD',
     });
+
+    await session.agent.get('/financial-settings').expect(200, { currency: 'USD' });
+    await session.agent.put('/financial-settings')
+      .set('X-CSRF-Token', session.csrfToken)
+      .send({ currency: 'cad' })
+      .expect(200, { currency: 'CAD' });
   });
 
   it('stores recurring event definitions without expanding occurrences', async () => {
     const session = await registerVerifyLogin('recurring-user', 'recurring@example.com');
     const calendar = await createCalendar(session);
     const category = await post(session.agent, '/categories', {
-      calendarId: calendar.calendar_id,
       name: 'Bills',
       color: '#654321',
     }, session.csrfToken).expect(201);
@@ -608,12 +692,11 @@ describe('tenant resources with cookie authentication', () => {
     expect(response.body.code).toBe('LIMIT_REACHED');
 
     await db.query(
-      `INSERT INTO categories (calendar_id, name, color)
+      `INSERT INTO categories (user_id, name, color)
        SELECT $1, 'Category ' || value, '#123456' FROM GENERATE_SERIES(1, 500) AS value`,
-      [calendar.calendar_id]
+      [userId]
     );
     response = await post(session.agent, '/categories', {
-      calendarId: calendar.calendar_id,
       name: 'Too many',
       color: '#654321',
     }, session.csrfToken).expect(409);
@@ -621,11 +704,11 @@ describe('tenant resources with cookie authentication', () => {
 
     await db.query(
       `INSERT INTO recurring_events (
-         calendar_id, title, start_date, time_start, time_end, budget, frequency, interval_count
+         calendar_id, user_id, title, start_date, time_start, time_end, budget, frequency, interval_count
        )
-       SELECT $1, 'Recurring ' || value, DATE '2026-01-01', TIME '09:00', TIME '10:00', 0, 'daily', 1
+       SELECT $1, $2, 'Recurring ' || value, DATE '2026-01-01', TIME '09:00', TIME '10:00', 0, 'daily', 1
        FROM GENERATE_SERIES(1, 500) AS value`,
-      [calendar.calendar_id]
+      [calendar.calendar_id, userId]
     );
     response = await post(session.agent, '/recurring-events', {
       calendarId: calendar.calendar_id,
